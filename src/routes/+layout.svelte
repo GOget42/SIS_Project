@@ -27,9 +27,12 @@
 	});
 
 	async function handleLogout() {
-		await supabase.auth.signOut();
-		goto('/login');
+		await fetch('/logout', { method: 'POST' });
+		location.href = '/login';
 	}
+
+
+
 </script>
 
 <style>

@@ -75,11 +75,9 @@
         <ul>
             {#each courses as course}
                 <li>
-                    {#if role === 'instructor'}
-                        <a href={`/courses/${course.course_id}`}>{course.course_name}</a>
-                    {:else}
-                        {course.course_name}
-                    {/if}
+                    <a href={`/private/courses/${course.course_id}`}>
+                        {course.course_name} - {course.format} ({course.ects} ECTS)
+                    </a>
                 </li>
             {/each}
         </ul>
