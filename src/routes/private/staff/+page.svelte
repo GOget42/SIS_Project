@@ -82,7 +82,9 @@
                     <button on:click={cancelEdit}>✖️ Cancel</button>
                     <button on:click={() => deleteInstructor(instructor)}>🗑️ Delete</button>
                 {:else}
-                    {instructor.first_name} {instructor.last_name} ({instructor.email})
+                    <a href={`/private/staff/${instructor.id}`}>
+                        {instructor.first_name} {instructor.last_name} ({instructor.email})
+                    </a>
                     <button on:click={() => startEditInstructor(instructor)}>✏️ Edit</button>
                     <button on:click={() => deleteInstructor(instructor)}>🗑️ Delete</button>
                 {/if}
@@ -112,7 +114,9 @@
     <ul>
         {#each data.admins as admin}
             <li>
-                {admin.first_name} {admin.last_name} ({admin.email})
+                <a href={`/private/staff/${admin.id}`}>
+                    {admin.first_name} {admin.last_name} ({admin.email})
+                </a>
                 <button on:click={() => deleteAdmin(admin)}>🗑️ Delete</button>
             </li>
         {/each}
