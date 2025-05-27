@@ -1,106 +1,72 @@
-<!--/src/routes/+layout.svelte-->
-<script>
-	import { page } from '$app/stores';
-	import { supabase } from '$lib/supabaseClient';
-	import { onMount } from 'svelte';
+<script lang="ts">
+	// Importiert den LayoutData-Typ für 'data'. Stellen Sie sicher, dass der Pfad zu './$types' korrekt ist.
+	export let data: import('./$types').LayoutData;
+
+	import { user as userStore } from '$lib/stores/auth';
+	// Importieren Sie Ihre clientseitige Supabase-Instanz.
+	// Stellen Sie sicher, dass '$lib/supabaseClient' die clientseitige Instanz korrekt exportiert.
+	// import { supabase as clientSupabase } from '$lib/supabaseClient'; // Nicht mehr direkt für Logout benötigt
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 
-	export let data;
-	let session = data.session;
-	let user = data.user;
-
-	let showDropdown = false;
-
-	onMount(async () => {
-		const { data: { session: newSession } } = await supabase.auth.getSession();
-		if (newSession) {
-			session = newSession;
-			user = newSession.user;
-		}
-
-		supabase.auth.onAuthStateChange((_event, sessionChange) => {
-			if (sessionChange) {
-				user = sessionChange.user;
+	// REAKTIVE Anweisung: Synchronisiert den userStore, sobald sich data.user ändert.
+	$: {
+		if (data) {
+			console.log('[+layout.svelte] Reactive update: data.user changed. New user ID from server:', data.user?.id);
+			// Nur aktualisieren, wenn sich der Wert tatsächlich ändert, um unnötige Store-Updates zu vermeiden,
+			// falls onAuthStateChange bereits den korrekten Zustand gesetzt hat.
+			const currentStoreValue = $userStore;
+			if (data.user?.id !== currentStoreValue?.id || (data.user === null && currentStoreValue !== null) || (data.user !== null && currentStoreValue === null)) {
+				userStore.set(data.user);
 			}
-		});
-
-	});
-
-	async function handleLogout() {
-		await fetch('/logout', { method: 'POST' });
-		location.href = '/login';
+		}
 	}
 
+	onMount(() => {
+		console.log('[+layout.svelte] Component Mounted. Initial data.user ID from server:', data?.user?.id);
+		const currentStoreValue = $userStore;
+		console.log('[+layout.svelte] onMount: Current $userStore value:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
+		// Wenn data.user beim Mounten existiert und der Store noch undefined ist, initial setzen.
+		// Dies ist eine Absicherung, falls die reaktive Zuweisung nicht sofort greift oder
+		// onAuthStateChange noch nicht gelaufen ist.
+		if (data.user !== undefined && currentStoreValue === undefined) {
+			console.log('[+layout.svelte] onMount: Setting userStore from initial server data as store is undefined.');
+			userStore.set(data.user);
+		}
+	});
 
+	$: {
+		const currentStoreValue = $userStore;
+		console.log('[+layout.svelte] $userStore state changed to:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
+	}
 
+	async function handleLogout() {
+		console.log('[+layout.svelte] Attempting logout by navigating to /logout endpoint...');
+		// Navigiere zum serverseitigen /logout Endpunkt.
+		// Dieser Endpunkt kümmert sich um das serverseitige Abmelden und das Löschen der Cookies
+		// und leitet dann zu /login weiter.
+		await goto('/logout');
+	}
 </script>
 
-<style>
-    nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: #f8f9fa;
-        border-bottom: 1px solid #ddd;
-    }
-    .nav-links {
-        display: flex;
-        gap: 1rem;
-    }
-    .account-area {
-        position: relative;
-    }
-    .account-icon {
-        font-size: 1.25rem;
-        cursor: pointer;
-    }
-    .dropdown {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 0.5rem;
-        display: flex;
-        flex-direction: column;
-        z-index: 10;
-    }
-    .dropdown a, .dropdown button {
-        background: none;
-        border: none;
-        text-align: left;
-        padding: 0.25rem 0;
-        cursor: pointer;
-        color: #0070f3;
-        font-weight: bold;
-    }
-</style>
-
-<nav>
-	<div class="nav-links">
-		<a href="/private/home" class:active={$page.url.pathname.startsWith('/private/home')}>Home</a>
-		{#if user?.user_metadata?.role === 'admin'}
-			<a href="/private/students" class:active={$page.url.pathname.startsWith('/private/students')}>Students</a>
-			<a href="/private/staff" class:active={$page.url.pathname.startsWith('/private/staff')}>Staff</a>
-		{/if}
-		<a href="/private/courses" class:active={$page.url.pathname.startsWith('/private/courses')}>Courses</a>
-	</div>
-
-	<div class="account-area">
-		{#if user}
-			<div class="account-icon" on:click={() => showDropdown = !showDropdown}>👤</div>
-			{#if showDropdown}
-				<div class="dropdown">
-					<a href="/private/home">My Account</a>
-					<button on:click={handleLogout}>Logout</button>
-				</div>
-			{/if}
-		{:else}
-			<a href="/login" class:active={$page.url.pathname === '/login'} title="Login">
-				<span class="account-icon">👤</span>
-			</a>
+<nav class="p-4 flex justify-between items-center shadow bg-white">
+	<h1 class="text-xl font-bold">Student Info System</h1>
+	<div class="space-x-4 flex items-center">
+		{#if $userStore}
+			<!-- Links für eingeloggte Benutzer -->
+			<a class="btn" href="/private/home">Home</a>
+			<a class="btn" href="/private/students">Students</a>
+			<a class="btn" href="/private/courses">Courses</a>
+			<a class="btn" href="/private/staff">Staff</a>
+			<button class="btn" on:click={handleLogout}>Logout</button>
+		{:else if $userStore === null}
+			<!-- Links für explizit ausgeloggte Benutzer -->
+			<a class="btn" href="/login">Login</a>
+			<a class="btn" href="/signup">Signup</a>
+		{:else if $userStore === undefined}
+			<!-- Store ist noch nicht initialisiert (weder User noch null) -->
+			<span class="text-sm text-gray-500">Authenticating...</span>
+			<!-- Optional: Hier könnten auch Login/Signup Links als Fallback stehen -->
 		{/if}
 	</div>
 </nav>

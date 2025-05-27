@@ -1,7 +1,7 @@
 <!-- src/routes/+page.svelte -->
 <script>
 	import { onMount } from 'svelte';
-	import { supabase } from '$lib/supabaseClient';
+	import { supabase } from '$lib/supabaseClient.js';
 	import { goto } from '$app/navigation';
 
 	onMount(async () => {
@@ -26,7 +26,6 @@
 	});
 </script>
 
-<!-- Optional: Loading Spinner -->
 <div class="flex items-center justify-center min-h-screen">
 	<div class="text-center text-gray-600 text-lg">Loading...</div>
 </div>

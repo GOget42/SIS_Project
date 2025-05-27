@@ -1,92 +1,162 @@
-<script>
+<script lang="ts">
     import { enhance } from '$app/forms';
-    import { supabase } from '$lib/supabaseClient';
-    import { deleteAuthUser } from '$lib/api/auth';
-    export let data;
+    import { invalidateAll } from '$app/navigation';
+    import type { ActionData, PageData } from './$types';
+
+    export let data: PageData;
+    export let form: ActionData; // Für Rückmeldungen von Aktionen
+
+    interface StaffMember {
+        user_id: string; // Wichtig für Auth-Operationen
+        first_name: string;
+        last_name: string;
+        email: string;
+    }
+
+    interface Instructor extends StaffMember {
+        instructor_id: string;
+    }
+
+    interface Admin extends StaffMember {
+        admin_id: string;
+    }
 
     let creatingInstructor = false;
     let creatingAdmin = false;
 
-    let newInstructor = { first_name: '', last_name: '', email: '' };
-    let newAdmin = { email: '' };
+    let newInstructor: Pick<Instructor, 'first_name' | 'last_name' | 'email'> & { password?: string } = {
+        first_name: '',
+        last_name: '',
+        email: '',
+        password: ''
+    };
+    let newAdmin: Pick<Admin, 'first_name' | 'last_name' | 'email'> & { password?: string } = {
+        first_name: '',
+        last_name: '',
+        email: '',
+        password: ''
+    };
 
-    let editingInstructorId = null;
-    let updatedInstructor = { first_name: '', last_name: '', email: '' };
+    let editingInstructorId: string | null = null;
+    let updatedInstructor: Pick<Instructor, 'first_name' | 'last_name' | 'email'> & { password?: string; user_id?: string } = {
+        first_name: '',
+        last_name: '',
+        email: '',
+        password: '',
+        user_id: ''
+    };
 
-    function startEditInstructor(instructor) {
-        editingInstructorId = instructor.id;
-        updatedInstructor = { ...instructor };
-    }
-
-    async function saveInstructor() {
-        await supabase
-          .from('instructors')
-          .update({
-              first_name: updatedInstructor.first_name,
-              last_name: updatedInstructor.last_name,
-              email: updatedInstructor.email
-          })
-          .eq('id', editingInstructorId);
-        location.reload();
-    }
-
-    async function deleteInstructor(instructor) {
-        if (confirm(`Are you sure you want to delete ${instructor.first_name} ${instructor.last_name}?`)) {
-            await supabase.from('instructors').delete().eq('id', instructor.id);
-            await deleteAuthUser(instructor.user_id);
-            alert('Instructor deleted.');
-            location.reload();
-        }
-    }
-
-    async function deleteAdmin(admin) {
-        if (confirm(`Are you sure you want to delete admin ${admin.email}?`)) {
-            await supabase.from('admins').delete().eq('id', admin.id);
-            await deleteAuthUser(admin.user_id);
-            alert('Admin deleted.');
-            location.reload();
-        }
+    function startEditInstructor(instructor: Instructor) {
+        editingInstructorId = instructor.instructor_id;
+        updatedInstructor = {
+            first_name: instructor.first_name,
+            last_name: instructor.last_name,
+            email: instructor.email,
+            user_id: instructor.user_id,
+            password: ''
+        };
     }
 
     function cancelEdit() {
         editingInstructorId = null;
     }
+
 </script>
 
-<h1>Staff</h1>
+<h1>Staff Management</h1>
 
 <!-- Instructors Section -->
 <h2>Instructors</h2>
-
 <button on:click={() => creatingInstructor = true}>➕ Add Instructor</button>
 
 {#if creatingInstructor}
-    <form method="POST" action="?/createInstructor" use:enhance>
+    <form
+      method="POST"
+      action="?/createInstructor"
+      use:enhance={() => {
+      creatingInstructor = false;
+      return async ({ result }) => {
+        if (result.type === 'success' || result.type === 'failure') {
+           await invalidateAll();
+        }
+        if (result.type === 'failure' && result.data?.error) {
+            alert(`Error: ${result.data.error}`);
+        } else if (result.type === 'success' && result.data?.message) {
+            alert(result.data.message);
+            newInstructor = { first_name: '', last_name: '', email: '', password: '' };
+        }
+      };
+    }}
+    >
         <input name="first_name" bind:value={newInstructor.first_name} placeholder="First Name" required />
         <input name="last_name" bind:value={newInstructor.last_name} placeholder="Last Name" required />
         <input name="email" type="email" bind:value={newInstructor.email} placeholder="Email" required />
+        <input name="password" type="password" bind:value={newInstructor.password} placeholder="Password" required />
         <button type="submit">💾 Save Instructor</button>
         <button type="button" on:click={() => creatingInstructor = false}>✖️ Cancel</button>
     </form>
 {/if}
 
-{#if data.instructors.length > 0}
+{#if data.instructors && data.instructors.length > 0}
     <ul>
-        {#each data.instructors as instructor}
+        {#each data.instructors as instructor (instructor.instructor_id)}
             <li>
-                {#if editingInstructorId === instructor.id}
-                    <input bind:value={updatedInstructor.first_name} placeholder="First Name" />
-                    <input bind:value={updatedInstructor.last_name} placeholder="Last Name" />
-                    <input bind:value={updatedInstructor.email} placeholder="Email" />
-                    <button on:click={saveInstructor}>💾 Save</button>
-                    <button on:click={cancelEdit}>✖️ Cancel</button>
-                    <button on:click={() => deleteInstructor(instructor)}>🗑️ Delete</button>
+                {#if editingInstructorId === instructor.instructor_id}
+                    <form
+                      method="POST"
+                      action="?/updateInstructor"
+                      use:enhance={() => {
+              editingInstructorId = null;
+              return async ({ result }) => {
+                if (result.type === 'success' || result.type === 'failure') {
+                    await invalidateAll();
+                }
+                if (result.type === 'failure' && result.data?.error) {
+                    alert(`Error: ${result.data.error}`);
+                } else if (result.type === 'success' && result.data?.message) {
+                    alert(result.data.message);
+                }
+              };
+            }}
+                    >
+                        <input type="hidden" name="instructor_id" value={instructor.instructor_id} />
+                        <input type="hidden" name="user_id" value={instructor.user_id} />
+                        <input name="first_name" bind:value={updatedInstructor.first_name} placeholder="First Name" required />
+                        <input name="last_name" bind:value={updatedInstructor.last_name} placeholder="Last Name" required />
+                        <input name="email" type="email" bind:value={updatedInstructor.email} placeholder="Email" required />
+                        <input name="password" type="password" bind:value={updatedInstructor.password} placeholder="New Password (leave blank if no change)" />
+                        <button type="submit">💾 Save Changes</button>
+                        <button type="button" on:click={cancelEdit}>✖️ Cancel</button>
+                    </form>
                 {:else}
-                    <a href={`/private/staff/${instructor.id}`}>
-                        {instructor.first_name} {instructor.last_name} ({instructor.email})
-                    </a>
+                    <a href={`/private/staff/${instructor.instructor_id}`}>{instructor.first_name} {instructor.last_name} ({instructor.email})</a>
                     <button on:click={() => startEditInstructor(instructor)}>✏️ Edit</button>
-                    <button on:click={() => deleteInstructor(instructor)}>🗑️ Delete</button>
+                    <form
+                      method="POST"
+                      action="?/deleteInstructor"
+                      use:enhance={() => {
+                return async ({ result }) => {
+                    if (result.type === 'success' || result.type === 'failure') {
+                        await invalidateAll();
+                    }
+                    if (result.type === 'failure' && result.data?.error) {
+                        alert(`Error: ${result.data.error}`);
+                    } else if (result.type === 'success' && result.data?.message) {
+                        alert(result.data.message);
+                    }
+                };
+            }}
+                      style="display: inline;"
+                      on:submit|preventDefault={(e) => {
+                if (!confirm(`Are you sure you want to delete ${instructor.first_name} ${instructor.last_name}?`)) {
+                    e.preventDefault();
+                }
+            }}
+                    >
+                        <input type="hidden" name="instructor_id" value={instructor.instructor_id} />
+                        <input type="hidden" name="user_id" value={instructor.user_id} />
+                        <button type="submit">🗑️ Delete</button>
+                    </form>
                 {/if}
             </li>
         {/each}
@@ -97,27 +167,67 @@
 
 <!-- Admins Section -->
 <h2>Admins</h2>
-
 <button on:click={() => creatingAdmin = true}>➕ Add Admin</button>
 
 {#if creatingAdmin}
-    <form method="POST" action="?/createAdmin" use:enhance>
+    <form
+      method="POST"
+      action="?/createAdmin"
+      use:enhance={() => {
+      creatingAdmin = false;
+      return async ({ result }) => {
+        if (result.type === 'success' || result.type === 'failure') {
+           await invalidateAll();
+        }
+        if (result.type === 'failure' && result.data?.error) {
+            alert(`Error: ${result.data.error}`);
+        } else if (result.type === 'success' && result.data?.message) {
+            alert(result.data.message);
+            newAdmin = { first_name: '', last_name: '', email: '', password: '' };
+        }
+      };
+    }}
+    >
         <input name="first_name" bind:value={newAdmin.first_name} placeholder="First Name" required />
         <input name="last_name" bind:value={newAdmin.last_name} placeholder="Last Name" required />
         <input name="email" type="email" bind:value={newAdmin.email} placeholder="Admin Email" required />
+        <input name="password" type="password" bind:value={newAdmin.password} placeholder="Password" required />
         <button type="submit">💾 Save Admin</button>
         <button type="button" on:click={() => creatingAdmin = false}>✖️ Cancel</button>
     </form>
 {/if}
 
-{#if data.admins.length > 0}
+{#if data.admins && data.admins.length > 0}
     <ul>
-        {#each data.admins as admin}
+        {#each data.admins as admin (admin.admin_id)}
             <li>
-                <a href={`/private/staff/${admin.id}`}>
-                    {admin.first_name} {admin.last_name} ({admin.email})
-                </a>
-                <button on:click={() => deleteAdmin(admin)}>🗑️ Delete</button>
+                {admin.first_name} {admin.last_name} ({admin.email})
+                <form
+                  method="POST"
+                  action="?/deleteAdmin"
+                  use:enhance={() => {
+                return async ({ result }) => {
+                    if (result.type === 'success' || result.type === 'failure') {
+                        await invalidateAll();
+                    }
+                    if (result.type === 'failure' && result.data?.error) {
+                        alert(`Error: ${result.data.error}`);
+                    } else if (result.type === 'success' && result.data?.message) {
+                        alert(result.data.message);
+                    }
+                };
+            }}
+                  style="display: inline;"
+                  on:submit|preventDefault={(e) => {
+                if (!confirm(`Are you sure you want to delete admin ${admin.email}?`)) {
+                    e.preventDefault();
+                }
+            }}
+                >
+                    <input type="hidden" name="admin_id" value={admin.admin_id} />
+                    <input type="hidden" name="user_id" value={admin.user_id} />
+                    <button type="submit">🗑️ Delete</button>
+                </form>
             </li>
         {/each}
     </ul>

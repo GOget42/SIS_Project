@@ -1,0 +1,17 @@
+First Name: admin
+Last Name:  admin
+Email:      a@example.com
+Password:   123456
+Role:       admin
+
+First Name: instructor
+Last Name:  instructor
+Email:      i@example.com
+Password:   123456
+Role:       instructor
+
+First Name: student
+Last Name:  student
+Email:      s@example.com
+Password:   123456
+Role:       student
