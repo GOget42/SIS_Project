@@ -1,76 +1,97 @@
 <script lang="ts">
-	// Importiert den LayoutData-Typ für 'data'. Stellen Sie sicher, dass der Pfad zu './$types' korrekt ist.
 	export let data: import('./$types').LayoutData;
 
 	import { user as userStore } from '$lib/stores/auth';
-	// Importieren Sie Ihre clientseitige Supabase-Instanz.
-	// Stellen Sie sicher, dass '$lib/supabaseClient' die clientseitige Instanz korrekt exportiert.
-	// import { supabase as clientSupabase } from '$lib/supabaseClient'; // Nicht mehr direkt für Logout benötigt
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import '../app.css';
+	import { navigating } from '$app/stores'; // Importieren des navigating Stores
+	import LoadingIndicator from '$lib/components/LoadingIndicator.svelte'; // Importieren der Komponente
+	import { isFormSubmitting } from '$lib/stores/formLoadingStore'; // Hinzugefügter Import
 
-	// REAKTIVE Anweisung: Synchronisiert den userStore, sobald sich data.user ändert.
 	$: {
 		if (data) {
-			console.log('[+layout.svelte] Reactive update: data.user changed. New user ID from server:', data.user?.id);
-			// Nur aktualisieren, wenn sich der Wert tatsächlich ändert, um unnötige Store-Updates zu vermeiden,
-			// falls onAuthStateChange bereits den korrekten Zustand gesetzt hat.
+			// console.log('[+layout.svelte] Reactive update: data.user changed. New user ID from server:', data.user?.id);
 			const currentStoreValue = $userStore;
-			if (data.user?.id !== currentStoreValue?.id || (data.user === null && currentStoreValue !== null) || (data.user !== null && currentStoreValue === null)) {
+			if (
+				data.user?.id !== currentStoreValue?.id ||
+				(data.user === null && currentStoreValue !== null) ||
+				(data.user !== null && currentStoreValue === null)
+			) {
 				userStore.set(data.user);
 			}
 		}
 	}
 
 	onMount(() => {
-		console.log('[+layout.svelte] Component Mounted. Initial data.user ID from server:', data?.user?.id);
+		// console.log('[+layout.svelte] Component Mounted. Initial data.user ID from server:', data?.user?.id);
 		const currentStoreValue = $userStore;
-		console.log('[+layout.svelte] onMount: Current $userStore value:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
-		// Wenn data.user beim Mounten existiert und der Store noch undefined ist, initial setzen.
-		// Dies ist eine Absicherung, falls die reaktive Zuweisung nicht sofort greift oder
-		// onAuthStateChange noch nicht gelaufen ist.
+		// console.log('[+layout.svelte] onMount: Current $userStore value:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
 		if (data.user !== undefined && currentStoreValue === undefined) {
-			console.log('[+layout.svelte] onMount: Setting userStore from initial server data as store is undefined.');
+			// console.log('[+layout.svelte] onMount: Setting userStore from initial server data as store is undefined.');
 			userStore.set(data.user);
 		}
 	});
 
-	$: {
-		const currentStoreValue = $userStore;
-		console.log('[+layout.svelte] $userStore state changed to:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
-	}
+	// $: {
+	// 	const currentStoreValue = $userStore;
+	// 	console.log('[+layout.svelte] $userStore state changed to:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
+	// }
 
 	async function handleLogout() {
-		console.log('[+layout.svelte] Attempting logout by navigating to /logout endpoint...');
-		// Navigiere zum serverseitigen /logout Endpunkt.
-		// Dieser Endpunkt kümmert sich um das serverseitige Abmelden und das Löschen der Cookies
-		// und leitet dann zu /login weiter.
+		// console.log('[+layout.svelte] Attempting logout by navigating to /logout endpoint...');
 		await goto('/logout');
 	}
+
+	// Basis-Styling für Navigationslinks
+	const navLinkClasses = 'px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out';
+	const activeNavLinkClasses = 'bg-gray-900 text-white'; // Beispiel für aktiven Link, muss ggf. dynamisch gesetzt werden
+	const inactiveNavLinkClasses = 'text-gray-700 hover:bg-gray-200 hover:text-gray-900';
+	const buttonClasses = 'px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-150 ease-in-out';
+	const primaryButtonClasses = 'text-white bg-blue-600 hover:bg-blue-700';
+	const secondaryButtonClasses = 'text-gray-700 bg-gray-200 hover:bg-gray-300';
 </script>
 
-<nav class="p-4 flex justify-between items-center shadow bg-white">
-	<h1 class="text-xl font-bold">Student Info System</h1>
-	<div class="space-x-4 flex items-center">
-		{#if $userStore}
-			<!-- Links für eingeloggte Benutzer -->
-			<a class="btn" href="/private/home">Home</a>
-			<a class="btn" href="/private/students">Students</a>
-			<a class="btn" href="/private/courses">Courses</a>
-			<a class="btn" href="/private/staff">Staff</a>
-			<button class="btn" on:click={handleLogout}>Logout</button>
-		{:else if $userStore === null}
-			<!-- Links für explizit ausgeloggte Benutzer -->
-			<a class="btn" href="/login">Login</a>
-			<a class="btn" href="/signup">Signup</a>
-		{:else if $userStore === undefined}
-			<!-- Store ist noch nicht initialisiert (weder User noch null) -->
-			<span class="text-sm text-gray-500">Authenticating...</span>
-			<!-- Optional: Hier könnten auch Login/Signup Links als Fallback stehen -->
-		{/if}
+{#if $navigating || $isFormSubmitting}
+	<LoadingIndicator />
+{/if}
+
+<nav class="bg-white shadow-lg sticky top-0 z-50">
+	<div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+		<div class="relative flex items-center justify-between h-16">
+			<div class="flex-1 flex items-center justify-center sm:items-stretch sm:justify-start">
+				<div class="flex-shrink-0 flex items-center">
+					<a href="/" class="text-2xl font-bold text-blue-600 hover:text-blue-800 transition-colors">
+						Student Info System
+					</a>
+				</div>
+			</div>
+			<div class="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+				<div class="ml-3 relative space-x-2">
+					{#if $userStore}
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/home">Home</a>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/students">Students</a>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/courses">Courses</a>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/staff">Staff</a>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/flashdecks">⚡FlashDecks</a>
+						<button class="{buttonClasses} bg-red-500 hover:bg-red-700 text-white" on:click={handleLogout}
+						>Logout</button
+						>
+					{:else if $userStore === null}
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/login">Login</a>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/signup">Signup</a>
+					{:else if $userStore === undefined}
+						<!-- Dieser Block wird angezeigt, während der Benutzerstatus noch nicht vom Server geladen wurde -->
+						<span class="text-sm text-gray-500 px-3 py-2">Authenticating...</span>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/login">Login</a>
+						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/signup">Signup</a>
+					{/if}
+				</div>
+			</div>
+		</div>
 	</div>
 </nav>
 
-<main>
+<main class="bg-gray-50 min-h-screen">
 	<slot />
 </main>

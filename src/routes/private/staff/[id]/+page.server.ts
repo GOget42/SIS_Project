@@ -40,7 +40,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			.select(`
                 enrollment_id,
                 courses ( course_id, course_name, ects ),
-                assignments ( assignment_id, assignment_name, grade, weight, max_points, due_date )
+                assignments ( assignment_id, assignment_name, grade, weight, due_date )
             `)
 			.eq('student_id', student.student_id);
 

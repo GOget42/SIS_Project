@@ -12,6 +12,7 @@ declare global {
 			supabase: ReturnType<typeof createServerClient>;
 			session: Session | null;
 			user: User | null;
+			getSession: () => Promise<Session | null>; // Hinzugefügt für getSession
 		}
 		// interface PageData {}
 		// interface Error {}
@@ -38,7 +39,7 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 			setAll: (cookieArray: { name: string; value: string; options: CookieOptions }[]) => {
 				// console.log('[HOOK] setAll cookies:', cookieArray); // Optional: Logging
 				cookieArray.forEach(({ name, value, options }) => {
-					event.cookies.set(name, value, options);
+					event.cookies.set(name, value, { ...options, path: '/' });
 				});
 			}
 		},
@@ -50,27 +51,40 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 		}
 	});
 
+	/**
+	 * Convenience helper für den direkten Aufruf von getSession().
+	 * Verfügbar unter event.locals.getSession.
+	 */
+	event.locals.getSession = async () => {
+		const {
+			data: { session }
+		} = await event.locals.supabase.auth.getSession();
+		// console.log('🔑 [HOOK - getSession() helper] Fetched session:', session ? session.user.id : null);
+		return session;
+	};
+
+	// Befüllt event.locals.session und event.locals.user
+	// Dies geschieht zusätzlich zum getSession Helper, um direkten Zugriff zu ermöglichen.
 	try {
-		const { data: { session } } = await event.locals.supabase.auth.getSession();
-		console.log('🔑 [HOOK] Session:', session ? session.user?.id : null);
-		if (session && session.access_token) {
+		const { data: { session: currentSessionData } } = await event.locals.supabase.auth.getSession();
+		// console.log('🔑 [HOOK] Initial session fetch for locals.session:', currentSessionData ? currentSessionData.user?.id : null);
+		event.locals.session = currentSessionData;
+
+		if (event.locals.session && event.locals.session.access_token) {
 			const { data: { user }, error: userError } = await event.locals.supabase.auth.getUser();
 			if (userError) {
-				console.error('❌ [HOOK] Error validating user:', userError.message);
-				event.locals.session = null;
+				console.error('❌ [HOOK] Error fetching user for locals.user:', userError.message);
 				event.locals.user = null;
 			} else {
-				console.log('✅ [HOOK] Authenticated user:', user?.id);
-				event.locals.session = session;
+				// console.log('✅ [HOOK] Authenticated user for locals.user:', user?.id);
 				event.locals.user = user;
 			}
 		} else {
-			console.log('🚫 [HOOK] No valid session found');
-			event.locals.session = null;
+			// console.log('🚫 [HOOK] No valid session found for locals.session');
 			event.locals.user = null;
 		}
 	} catch (err: any) {
-		console.error('❗ [HOOK] Error fetching session or user:', err?.message || err);
+		console.error('❗ [HOOK] Error during initial session/user population:', err?.message || err);
 		event.locals.session = null;
 		event.locals.user = null;
 	}
@@ -82,24 +96,24 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const { session, user } = event.locals;
+	const { session, user } = event.locals; // Diese sind nun durch supabaseHandler befüllt
 	const { pathname } = event.url;
 
-	console.log(`[GUARD] Path: ${pathname}, User: ${user?.id}, Session: ${session ? 'exists' : 'null'}`);
+	// console.log(`[GUARD] Path: ${pathname}, User: ${user?.id}, Session: ${session ? 'exists' : 'null'}`);
 
 	if (!session && pathname.startsWith('/private')) {
-		console.log(`🚷 [GUARD] Redirecting unauthenticated access from: ${pathname} to /login`);
+		// console.log(`🚷 [GUARD] Redirecting unauthenticated access from: ${pathname} to /login`);
 		throw redirect(303, '/login');
 	}
 
 	if (session && (pathname === '/login' || pathname === '/register')) {
-		console.log(`↪️ [GUARD] Already logged in, redirecting from ${pathname} to /private/home`);
+		// console.log(`↪️ [GUARD] Already logged in, redirecting from ${pathname} to /private/home`);
 		throw redirect(303, '/private/home');
 	}
 
 	// Spezifische Weiterleitung von der Stammroute, wenn eingeloggt
 	if (session && pathname === '/') {
-		console.log(`↪️ [GUARD] User is logged in and on '/', redirecting to /private/home`);
+		// console.log(`↪️ [GUARD] User is logged in and on '/', redirecting to /private/home`);
 		throw redirect(303, '/private/home');
 	}
 
