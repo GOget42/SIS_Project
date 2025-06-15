@@ -2,9 +2,8 @@
 <script lang="ts">
     import { supabase } from '$lib/supabaseClient'; // .js entfernt für Konsistenz, falls es ein .ts File ist
     import { goto } from '$app/navigation';
-    import type { AuthError, User } from '@supabase/supabase-js';
-
-    let email = '';
+import type { AuthError, User, PostgrestError } from "@supabase/supabase-js";
+let email = "";
     let password = '';
     let role = 'student'; // Standardrolle
     let first_name = '';
@@ -36,7 +35,7 @@
         // Überprüfen, ob data.user vorhanden ist, bevor auf data.user.id zugegriffen wird
         if (data && data.user) {
             const userId = data.user.id;
-            let insertError: AuthError | null | undefined = null; // Um den Fehler spezifischer zu typisieren
+            let insertError: PostgrestError | null = null; // Um den Fehler spezifischer zu typisieren
 
             try {
                 if (role === 'student') {
