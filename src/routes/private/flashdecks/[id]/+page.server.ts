@@ -10,13 +10,11 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 
 	const { data: deck, error: deckError } = await supabase
 		.from('decks')
-		.select(`*, user_id`) // keep user_id so we know the owner
+		.select(`*, user_id`)
 		.eq('flashdeck_id', params.id)
-		// .eq("user_id", session.user.id) // This line was removed to allow loading decks from other users
 		.single();
 
 	if (deckError || !deck) {
-		// This is now triggered if the deck does not exist, regardless of owner
 		throw error(404, 'Deck nicht gefunden.');
 	}
 
@@ -35,7 +33,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 		deck: deck as Tables<'decks'>,
 		cards: cards as Tables<'cards'>[],
 		deckId: params.id,
-		isOwner: deck.user_id === session.user.id // Optional flag indicating whether the current user is the owner
+		isOwner: deck.user_id === session.user.id
 	};
 };
 
@@ -80,7 +78,6 @@ export const actions: Actions = {
 
 		const { error: insertError } = await supabase.from('cards').insert({
 			flashdeck_id: deckId,
-			user_id: session.user.id, // Karten werden immer mit der ID des aktuellen Benutzers erstellt
 			front_content: frontContent,
 			back_content: backContent
 		});
@@ -111,7 +108,6 @@ export const actions: Actions = {
 		const cardId = formData.get('card_id') as string;
 		const frontContent = formData.get('front_content') as string;
 		const backContent = formData.get('back_content') as string;
-		// const deckId = params.id; // Not required directly for card verification since the card has its own flashdeck_id
 
 		if (!cardId || !frontContent || !backContent) {
 			return fail(400, {
@@ -123,26 +119,38 @@ export const actions: Actions = {
 			});
 		}
 
-		// Verify card ownership
-		const { data: card, error: cardError } = await supabase
+		// Verify card existence and get its deck_id
+		const { data: cardData, error: cardError } = await supabase
 			.from('cards')
-			.select('user_id, flashdeck_id')
+			.select('flashdeck_id') // Nur flashdeck_id auswählen
 			.eq('card_id', cardId)
 			.single();
 
-		if (cardError || !card) {
+		if (cardError || !cardData) {
 			return fail(404, { message: 'Card not found.', success: false, cardId });
 		}
 
-		if (card.user_id !== session.user.id) {
+		// Verify deck ownership for the card
+		const { data: deckOwner, error: deckOwnerError } = await supabase
+			.from('decks')
+			.select('user_id')
+			.eq('flashdeck_id', cardData.flashdeck_id)
+			.single();
+
+		if (deckOwnerError || !deckOwner) {
+			return fail(500, { message: 'Could not verify card ownership (deck not found).', success: false, cardId });
+		}
+
+		if (deckOwner.user_id !== session.user.id) {
 			return fail(403, {
-				message: 'You are not authorized to edit this card.',
+				message: 'You are not authorized to edit cards in this deck.',
 				success: false,
 				cardId
 			});
 		}
+
 		// Optional extra check to ensure the card belongs to the current deck if params.id is relevant
-		if (card.flashdeck_id !== params.id) {
+		if (cardData.flashdeck_id !== params.id) {
 			return fail(403, {
 				message: 'This card does not belong to the currently displayed deck.',
 				success: false,
@@ -154,8 +162,8 @@ export const actions: Actions = {
 			.from('cards')
 			.update({
 				front_content: frontContent,
-				back_content: backContent,
-				updated_at: new Date().toISOString()
+				back_content: backContent
+				// updated_at: new Date().toISOString() // Entfernt, da updated_at nicht in cards Tabelle
 			})
 			.eq('card_id', cardId);
 
@@ -185,31 +193,42 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const cardId = formData.get('card_id') as string;
-		// const deckId = params.id; // Ähnlich wie bei updateCard
 
 		if (!cardId) {
 			return fail(400, { message: 'Karten-ID ist erforderlich.', success: false });
 		}
 
-		// Verify card ownership
-		const { data: card, error: cardError } = await supabase
+		// Verify card existence and get its deck_id
+		const { data: cardData, error: cardError } = await supabase
 			.from('cards')
-			.select('user_id, flashdeck_id')
+			.select('flashdeck_id') // Nur flashdeck_id auswählen
 			.eq('card_id', cardId)
 			.single();
 
-		if (cardError || !card) {
+		if (cardError || !cardData) {
 			return fail(404, { message: 'Karte nicht gefunden.', success: false });
 		}
 
-		if (card.user_id !== session.user.id) {
+		// Verify deck ownership for the card
+		const { data: deckOwner, error: deckOwnerError } = await supabase
+			.from('decks')
+			.select('user_id')
+			.eq('flashdeck_id', cardData.flashdeck_id)
+			.single();
+
+		if (deckOwnerError || !deckOwner) {
+			return fail(500, { message: 'Could not verify card ownership (deck not found).', success: false });
+		}
+
+		if (deckOwner.user_id !== session.user.id) {
 			return fail(403, {
-				message: 'You are not authorized to delete this card.',
+				message: 'You are not authorized to delete cards in this deck.',
 				success: false
 			});
 		}
+
 		// Optional additional check
-		if (card.flashdeck_id !== params.id) {
+		if (cardData.flashdeck_id !== params.id) {
 			return fail(403, {
 				message:
 					'This card does not belong to the currently displayed deck and cannot be deleted here.',

@@ -206,7 +206,7 @@
 
 			<!-- StudentAssignmentTimeline for Instructor -->
 			{#if instructorProfileForChart?.instructor_id}
-				<div class="my-8 rounded-xl bg-white p-6 shadow-xl">
+				<div class="my-8">
 					<InstructorAssignmentTimeline
 						instructor_id={instructorProfileForChart.instructor_id.toString()}
 					/>

@@ -1039,14 +1039,13 @@
 
 		<!-- Course Administration Section -->
 		{#if (data.role === 'admin' || (data.role === 'instructor' && data.course?.instructors?.user_id === $page.data.user?.id)) && data.course?.active}
-			<div class="mt-8 mb-8 rounded-lg bg-gray-50 p-6 shadow-md">
-				<h3 class="mb-4 text-xl font-semibold text-gray-800">Kursverwaltung</h3>
+			<div class="mt-8 mb-8 ">
 				<form method="POST" action="?/markCourseFinished" use:enhance={handleMarkFinishedSubmit}>
 					<button
 						type="submit"
 						class="rounded bg-orange-600 px-6 py-2.5 text-sm leading-tight font-medium text-white uppercase shadow-md transition duration-150 ease-in-out hover:bg-orange-700 hover:shadow-lg focus:bg-orange-700 focus:shadow-lg focus:ring-0 focus:outline-none active:bg-orange-800 active:shadow-lg"
 					>
-						Kurs als abgeschlossen markieren
+						Mark Course as Inactive
 					</button>
 				</form>
 				{#if form?.actionResult === 'markCourseFinished'}

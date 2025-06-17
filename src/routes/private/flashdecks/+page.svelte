@@ -65,7 +65,7 @@
 				</div>
 				<div class="mb-4">
 					<label for="deckDescription" class="block text-sm font-medium text-gray-700"
-						>Description</label
+					>Description</label
 					>
 					<textarea
 						id="deckDescription"
@@ -86,12 +86,13 @@
 						<div class="flex-grow p-5">
 							<h3 class="mb-2 text-lg font-semibold text-blue-700">
 								<a href="/private/flashdecks/{deck.flashdeck_id}" class="hover:underline"
-									>{deck.name}</a
+								>{deck.name}</a
 								>
 							</h3>
 							{#if deck.description}
 								<p class="mb-3 text-sm whitespace-pre-line text-gray-600">{deck.description}</p>
 							{/if}
+							<p class="text-xs text-gray-500">Created by: {deck.creator_name}</p>
 						</div>
 						<div
 							class="flex items-center justify-end space-x-2 border-t border-gray-200 bg-gray-50 p-5"
@@ -137,12 +138,13 @@
 						<div class="flex-grow p-5">
 							<h3 class="mb-2 text-lg font-semibold text-blue-700">
 								<a href="/private/flashdecks/{deck.flashdeck_id}" class="hover:underline"
-									>{deck.name}</a
+								>{deck.name}</a
 								>
 							</h3>
 							{#if deck.description}
 								<p class="mb-3 text-sm whitespace-pre-line text-gray-600">{deck.description}</p>
 							{/if}
+							<p class="text-xs text-gray-500">Created by: {deck.creator_name}</p>
 						</div>
 						<div class="flex justify-end border-t border-gray-200 bg-gray-50 p-5">
 							<a href="/private/flashdecks/{deck.flashdeck_id}" class={viewOtherButtonClasses}>

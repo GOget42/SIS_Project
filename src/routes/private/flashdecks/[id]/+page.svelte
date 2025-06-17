@@ -212,9 +212,6 @@
 								<div class="mt-6 border-t border-gray-200 pt-4">
 									<p class="mb-2 text-xs text-gray-400">
 										Created: {new Date(card.created_at).toLocaleDateString()}
-										{#if card.updated_at && new Date(card.updated_at).toISOString() !== new Date(card.created_at).toISOString()}
-											, Updated: {new Date(card.updated_at).toLocaleDateString()}
-										{/if}
 									</p>
 									<!-- Show Edit/Delete buttons only if the user is the owner of the deck/card -->
 									{#if isOwner}

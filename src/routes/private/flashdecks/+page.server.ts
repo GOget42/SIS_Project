@@ -1,6 +1,9 @@
 import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import type { TablesInsert } from '$lib/database.types';
+import type { TablesInsert, Tables } from '$lib/database.types'; // Tables importiert
+
+// Type for decks with creator name
+type DeckWithCreator = Tables<'decks'> & { creator_name: string };
 
 export const load: PageServerLoad = async ({ locals: { supabase, getSession } }) => {
 	const session = await getSession();
@@ -10,7 +13,8 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 
 	const userId = session.user.id;
 
-	const { data: myDecks, error: myDecksError } = await supabase
+	// Get user's decks
+	const { data: myDecksData, error: myDecksError } = await supabase
 		.from('decks')
 		.select('*')
 		.eq('user_id', userId)
@@ -21,7 +25,12 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 		throw error(500, 'Could not fetch your decks.');
 	}
 
-	const { data: otherDecks, error: otherDecksError } = await supabase
+	const myDecks: DeckWithCreator[] = myDecksData
+		? myDecksData.map((deck) => ({ ...deck, creator_name: 'You' }))
+		: [];
+
+	// Get other decks created by other users
+	const { data: otherDecksData, error: otherDecksError } = await supabase
 		.from('decks')
 		.select('*')
 		.neq('user_id', userId)
@@ -30,6 +39,50 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 	if (otherDecksError) {
 		console.error('Error fetching other decks:', otherDecksError);
 		throw error(500, 'Could not fetch other decks.');
+	}
+
+	let otherDecks: DeckWithCreator[] = [];
+	if (otherDecksData && otherDecksData.length > 0) {
+		const creatorIds = [...new Set(otherDecksData.map((deck) => deck.user_id))];
+		const profilesMap = new Map<string, string>();
+
+		// Get profiles of students
+		const { data: studentProfiles, error: studentProfilesError } = await supabase
+			.from('students')
+			.select('user_id, first_name, last_name, email')
+			.in('user_id', creatorIds);
+
+		if (studentProfilesError) {
+			console.warn('Error fetching student profiles:', studentProfilesError.message);
+		} else if (studentProfiles) {
+			studentProfiles.forEach((p) => {
+				const name = p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.email;
+				profilesMap.set(p.user_id, name);
+			});
+		}
+
+		// Get profiles of instructors
+		const { data: instructorProfiles, error: instructorProfilesError } = await supabase
+			.from('instructors')
+			.select('user_id, first_name, last_name, email')
+			.in('user_id', creatorIds);
+
+		if (instructorProfilesError) {
+			console.warn('Error fetching instructor profiles:', instructorProfilesError.message);
+		} else if (instructorProfiles) {
+			instructorProfiles.forEach((p) => {
+				const instructorName = p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.email;
+				const existingName = profilesMap.get(p.user_id);
+				if (!existingName || (existingName && existingName.includes('@') && instructorName && !instructorName.includes('@')) || !profilesMap.has(p.user_id) ) {
+					profilesMap.set(p.user_id, instructorName);
+				}
+			});
+		}
+
+		otherDecks = otherDecksData.map((deck) => ({
+			...deck,
+			creator_name: profilesMap.get(deck.user_id) || 'Admin Account'
+		}));
 	}
 
 	return { myDecks, otherDecks };
@@ -48,7 +101,7 @@ export const actions: Actions = {
 		const description = formData.get('description') as string | null;
 
 		if (!name || name.trim() === '') {
-			return fail(400, { success: false, message: 'Deck name is required.', name, description });
+			return fail(400, { success: false, message: 'Deck name is required.', name, description, action: '?/createDeck' });
 		}
 
 		const newDeck: TablesInsert<'decks'> = {
@@ -57,17 +110,19 @@ export const actions: Actions = {
 			user_id: userId
 		};
 
-		const { data, error: insertError } = await supabase
-			.from('decks')
-			.insert(newDeck)
-			.select()
-			.single();
+		const { data, error: insertError } = await supabase.from('decks').insert(newDeck).select().single();
 
 		if (insertError) {
 			console.error('Error creating deck:', insertError);
-			return fail(500, { success: false, message: 'Failed to create deck.', name, description });
+			return fail(500, {
+				success: false,
+				message: 'Failed to create deck.',
+				name,
+				description,
+				action: '?/createDeck'
+			});
 		}
-		return { success: true, message: 'Deck created successfully!', createdDeck: data };
+		return { success: true, message: 'Deck created successfully!', createdDeck: data, action: '?/createDeck' };
 	},
 
 	deleteDeck: async ({ request, locals: { supabase, getSession } }) => {
@@ -84,7 +139,7 @@ export const actions: Actions = {
 			return fail(400, { success: false, message: 'Deck ID is required.' });
 		}
 
-		// Verify ownership
+		// Check if the deck exists and belongs to the user
 		const { data: deck, error: fetchError } = await supabase
 			.from('decks')
 			.select('user_id, flashdeck_id')
@@ -100,8 +155,7 @@ export const actions: Actions = {
 			return fail(403, { success: false, message: 'You are not authorized to delete this deck.' });
 		}
 
-		// Delete associated cards first
-		// Note: 'flashdeck_id' in 'cards' table refers to 'flashdeck_id' in 'decks' table.
+		// Delete associated cards
 		const { error: cardsDeleteError } = await supabase
 			.from('cards')
 			.delete()
@@ -112,7 +166,7 @@ export const actions: Actions = {
 			return fail(500, { success: false, message: 'Failed to delete associated cards.' });
 		}
 
-		// Delete the deck
+		// Delete Deck
 		const { error: deckDeleteError } = await supabase
 			.from('decks')
 			.delete()
