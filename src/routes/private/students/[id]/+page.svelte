@@ -1,11 +1,12 @@
 <script lang="ts">
   import { deleteStudent, updateStudent } from '$lib/api/students.ts';
-  import { deleteAuthUser } from '$lib/api/auth.ts'; // Import deleteAuthUser
+  import { deleteAuthUser } from '$lib/api/auth.ts';
   import { goto, invalidateAll } from '$app/navigation';
   import ProgressChart from '$lib/components/ProgressChart.svelte';
   import GradeDistributionStudentChart from '$lib/components/GradeDistributionStudentChart.svelte';
   import type { ActionData, PageData } from './$types';
   import { formSubmitIndicator } from '$lib/actions/formSubmitIndicator';
+  import type { ActionResult } from '@sveltejs/kit';
 
   export let data: PageData;
   export let form: ActionData;
@@ -14,10 +15,10 @@
   interface Assignment {
     assignment_id: string;
     assignment_name: string;
-    grade: number | string | null;
-    weight: number | string | null;
-    max_points: number | string | null;
+    grade: number | null; // Angepasst an Serverdaten
+    weight: number | null; // Angepasst an Serverdaten und DB
     due_date: string | null;
+    // max_points entfernt, da nicht direkt in DB 'assignments' oder von Serverdaten bereitgestellt
   }
 
   interface CourseInfo {
@@ -27,8 +28,7 @@
 
   interface CourseEnrollment {
     enrollment_id: number;
-    courses: CourseInfo | null;
-    assignments: Assignment[];
+    courses: CourseInfo & { assignments: Assignment[] } | null; // Sicherstellen, dass assignments hier ist
   }
 
   interface Student {
@@ -36,7 +36,7 @@
     first_name: string;
     last_name: string;
     email: string;
-    user_id: string | null; // Added user_id to link to auth user
+    user_id: string | null;
   }
 
   interface AvailableCourse {
@@ -46,45 +46,49 @@
 
   let student: Student | null = data.student as Student | null;
   let editing = false;
-  let enrolledCourses: CourseEnrollment[] = data.enrolledCourses || [];
-  let availableCourses: AvailableCourse[] = data.availableCourses || [];
+  // Sicherstellen, dass enrolledCourses und availableCourses korrekt initialisiert werden
+  let enrolledCourses: CourseEnrollment[] = (data.enrolledCourses as CourseEnrollment[]) || [];
+  let availableCourses: AvailableCourse[] = (data.availableCourses as AvailableCourse[]) || [];
+
 
   $: {
     student = data.student as Student | null;
-    availableCourses = data.availableCourses || [];
-    enrolledCourses = data.enrolledCourses || [];
+    availableCourses = (data.availableCourses as AvailableCourse[]) || [];
+    enrolledCourses = (data.enrolledCourses as CourseEnrollment[]) || [];
     if (form?.success && form.action === '?/enrollStudent') {
       // form = null; // oder spezifische Eigenschaften zurücksetzen
     }
   }
 
+  // Die handleDelete und handleUpdateSubmit Funktionen bleiben wie zuvor,
+  // da sie sich auf Studenten-Entitäten und nicht direkt auf die Assignment-Anzeige beziehen.
+  // Die Logik für das Löschen und Aktualisieren von Studenten wird über Formularaktionen gehandhabt.
+
   async function handleDelete() {
     if (student && confirm("Are you sure you want to delete this student? This action cannot be undone.")) {
       const studentIdToDelete = student.student_id;
-      const authUserIdToDelete = student.user_id; // Capture user_id for auth deletion
+      const authUserIdToDelete = student.user_id;
 
       try {
-        // First, delete the student record from the public table
+        // Diese Logik sollte idealerweise auch eine Server-Aktion sein, ähnlich wie bei Staff.
+        // Für Konsistenz und Robustheit. Hier wird die bestehende Client-seitige Logik beibehalten.
         await deleteStudent(studentIdToDelete);
         console.log(`Student record ${studentIdToDelete} deleted successfully.`);
 
-        // If the student record deletion was successful and there's an auth user ID, delete the auth user
         if (authUserIdToDelete) {
           try {
             await deleteAuthUser(authUserIdToDelete);
             console.log(`Auth user ${authUserIdToDelete} deleted successfully.`);
           } catch (authError: any) {
             console.error(`Failed to delete auth user ${authUserIdToDelete}:`, authError);
-            // Alert the user about the partial failure
             alert(`Student record was deleted, but failed to delete the associated authentication user: ${authError.message}. You might need to manually remove the user from the authentication system.`);
-            // Even with auth deletion failure, proceed with navigation as student record is gone
           }
         }
 
         await invalidateAll();
         await goto('/private/students', { replaceState: true });
 
-      } catch (dbError: any) { // This catches errors from deleteStudent primarily
+      } catch (dbError: any) {
         console.error(`Failed to delete student ${studentIdToDelete}:`, dbError);
         alert(`Failed to delete student: ${dbError.message}. This might be due to existing related data (like enrollments) or a server error. The authentication user (if any) was not attempted to be deleted. Check the console for more details.`);
       }
@@ -92,7 +96,7 @@
   }
 
   const handleUpdateSubmit = () => {
-    return async ({ result, update }) => {
+    return async ({ result }: { result: ActionResult, update: () => Promise<void> }) => {
       if (result.type === 'success' && result.data?.success) {
         editing = false;
       }
@@ -137,8 +141,8 @@
             </button>
           </div>
         </form>
-        {#if form?.updateError}
-          <p class="mt-4 text-sm text-red-600 bg-red-100 p-3 rounded-md">{form.updateError}</p>
+        {#if form?.updateError && form.action === '?/updateStudent'}
+          <p class="mt-4 text-sm text-red-600 bg-red-100 p-3 rounded-md">{form.message || 'An error occurred during update.'}</p>
         {/if}
       {:else}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
@@ -155,6 +159,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path></svg>
             <span>Edit</span>
           </button>
+          <!-- Der Lösch-Button verwendet die client-seitige handleDelete Funktion -->
           <button on:click={handleDelete} class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 flex items-center space-x-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.177-2.34.297A1.75 1.75 0 002.25 6H1.75a.75.75 0 000 1.5h.563c.015.04.032.078.049.117l.69 6.9A2.75 2.75 0 005.75 17h8.5A2.75 2.75 0 0017.002 14.517l.69-6.9c.017-.04.034-.077.049-.117h.563a.75.75 0 000-1.5h-.5a1.75 1.75 0 00-1.41-1.509c-.76-.12-1.545-.22-2.34-.297V3.75A2.75 2.75 0 0011.25 1h-2.5zM7.5 3.75c0-.966.784-1.75 1.75-1.75h1.5c.966 0 1.75.784 1.75 1.75v.443c-.563.065-1.14.14-1.716.226a.75.75 0 00-.568 0c-.575-.087-1.153-.16-1.716-.226V3.75zM4.249 6h11.502c.176.02.34.058.5.107l-.66 6.604a1.25 1.25 0 01-1.24 1.164H5.65a1.25 1.25 0 01-1.24-1.164L3.75 6.107A1.733 1.733 0 014.249 6z" clip-rule="evenodd"></path></svg>
             <span>Delete</span>
@@ -187,14 +192,17 @@
                   <span class="text-sm text-gray-500">Course ID: {enrollment.courses.course_id}</span>
                 </div>
 
-                {#if enrollment.assignments && enrollment.assignments.length > 0}
+                {#if enrollment.courses.assignments && enrollment.courses.assignments.length > 0}
                   <h4 class="text-md font-semibold text-gray-700 mb-2 mt-3 pt-3 border-t border-gray-200">Assignments:</h4>
                   <ul class="list-disc list-inside space-y-1.5 pl-4 text-sm">
-                    {#each enrollment.assignments as assignment (assignment.assignment_id)}
+                    {#each enrollment.courses.assignments as assignment (assignment.assignment_id)}
                       <li>
                         <span class="font-medium">{assignment.assignment_name}</span>
                         {#if assignment.grade !== null && assignment.grade !== undefined}
                           - Grade: {assignment.grade}
+                        {/if}
+                        {#if assignment.weight !== null && assignment.weight !== undefined}
+                          <span class="text-xs text-gray-500"> (Weight: {assignment.weight * 100}%)</span>
                         {/if}
                         {#if assignment.due_date}
                           <span class="text-xs text-gray-500 italic"> (Due: {new Date(assignment.due_date).toLocaleDateString()})</span>
@@ -226,8 +234,8 @@
       {#if form?.message && form.action === '?/enrollStudent'}
         <div class={`p-3 rounded-md mb-4 text-sm ${form.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {form.message}
-          {#if form.error && !form.message}
-            <span>Error: {form.error}</span>
+          {#if form.error && !form.message} <!-- Assuming form.error might exist if message is not specific -->
+            <span>Error: {typeof form.error === 'string' ? form.error : 'An error occurred.'}</span>
           {/if}
         </div>
       {/if}

@@ -33,15 +33,8 @@
     if (form.success) {
       creatingCourse = false;
       newCourse = { course_name: '', ects: '', hours: '', format: '', instructor_id: '' };
-      // invalidateAll(); // Wird durch enhance und erfolgreiche Formularverarbeitung behandelt
     }
   }
-  // $: if (form?.message && (form.action === '?/enrollStudent' || form.action === '?/unenrollStudent')) {
-  //   if (form.success) {
-  //     // invalidateAll(); // Wird durch enhance und erfolgreiche Formularverarbeitung behandelt
-  //   }
-  // }
-
 
   function applySort(column: string) {
     let newSortOrder: 'asc' | 'desc' = 'asc';
@@ -93,7 +86,7 @@
       <h2 class="text-2xl font-semibold text-gray-700 mb-6">Create New Course</h2>
       <form method="POST" action="?/createCourse" use:enhance={() => {
           return async ({ result }) => {
-            await invalidateAll(); // Daten neu laden nach erfolgreicher Aktion
+            await invalidateAll();
             if (result.type === 'success' && result.data?.success) {
                 creatingCourse = false;
                 newCourse = { course_name: '', ects: '', hours: '', format: '', instructor_id: '' };
@@ -163,6 +156,7 @@
   {#if data.courses && data.courses.length > 0}
     <ul class="space-y-4">
       {#each data.courses as course (course.course_id)}
+        {@const isEnrolled = data.enrolledCourseIds?.includes(course.course_id)}
         <li class="bg-white shadow-lg rounded-xl p-6 hover:shadow-2xl transition-shadow duration-200 ease-in-out">
           <div class="flex flex-col md:flex-row justify-between md:items-center">
             <div class="mb-4 md:mb-0">
@@ -174,18 +168,25 @@
                 {#if course.instructors}
                   | Instructor: {course.instructors.first_name} {course.instructors.last_name}
                 {/if}
+                | Status: {course.active === false ? 'Inactive' : (course.active === true ? 'Active' : 'Unknown')}
               </p>
             </div>
 
-            <div class="flex space-x-3 items-center">
+            <div class="flex flex-col items-end space-y-2 md:space-y-0 md:flex-row md:space-x-3 md:items-center">
               {#if role === 'student' && studentProfile}
-                {@const isEnrolled = data.enrolledCourseIds?.includes(course.course_id)}
                 <form
                   method="POST"
                   action={isEnrolled ? `?/unenrollStudent` : `?/enrollStudent`}
-                  use:enhance={() => {
+                  use:enhance={(submission) => {
+                    if (isEnrolled && course.active !== false) {
+                      const confirmed = window.confirm(
+                        'Are you sure you want to unenroll? This action will permanently delete all your grades for this course.'
+                      );
+                      if (!confirmed) {
+                        submission.cancel();
+                      }
+                    }
                     return async ({ result }) => {
-                      // Nach erfolgreicher Aktion Daten neu laden, um UI zu aktualisieren
                       if (result.type === 'success' || result.type === 'redirect') {
                          await invalidateAll();
                       }
@@ -197,17 +198,23 @@
                   <input type="hidden" name="student_id" value={studentProfile.student_id} />
                   <button
                     type="submit"
+                    disabled={isEnrolled && course.active === false}
                     class:bg-red-500={isEnrolled}
                     class:hover:bg-red-700={isEnrolled}
                     class:bg-green-500={!isEnrolled}
                     class:hover:bg-green-700={!isEnrolled}
+                    class:cursor-not-allowed={isEnrolled && course.active === false}
+                    class:opacity-50={isEnrolled && course.active === false}
                     class="text-white font-semibold py-2 px-4 rounded-md text-sm shadow-md transition duration-150 ease-in-out"
                   >
                     {isEnrolled ? 'Unenroll' : 'Enroll'}
                   </button>
                 </form>
+                {#if isEnrolled && course.active === false}
+                  <p class="text-xs text-gray-500 mt-1 md:mt-0 text-right md:text-left">Cannot unenroll from inactive course.</p>
+                {/if}
               {/if}
-              <a href={`/private/courses/${course.course_id}`} class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out">
+              <a href={`/private/courses/${course.course_id}`} class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out w-full md:w-auto text-center">
                 View Details
               </a>
               {#if role === 'admin'}

@@ -5,13 +5,12 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import '../app.css';
-	import { navigating } from '$app/stores'; // Importieren des navigating Stores
-	import LoadingIndicator from '$lib/components/LoadingIndicator.svelte'; // Importieren der Komponente
-	import { isFormSubmitting } from '$lib/stores/formLoadingStore'; // Hinzugefügter Import
+	import { navigating } from '$app/stores';
+	import LoadingIndicator from '$lib/components/LoadingIndicator.svelte';
+	import { isFormSubmitting } from '$lib/stores/formLoadingStore';
 
 	$: {
 		if (data) {
-			// console.log('[+layout.svelte] Reactive update: data.user changed. New user ID from server:', data.user?.id);
 			const currentStoreValue = $userStore;
 			if (
 				data.user?.id !== currentStoreValue?.id ||
@@ -24,32 +23,21 @@
 	}
 
 	onMount(() => {
-		// console.log('[+layout.svelte] Component Mounted. Initial data.user ID from server:', data?.user?.id);
 		const currentStoreValue = $userStore;
-		// console.log('[+layout.svelte] onMount: Current $userStore value:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
 		if (data.user !== undefined && currentStoreValue === undefined) {
-			// console.log('[+layout.svelte] onMount: Setting userStore from initial server data as store is undefined.');
 			userStore.set(data.user);
 		}
 	});
 
-	// $: {
-	// 	const currentStoreValue = $userStore;
-	// 	console.log('[+layout.svelte] $userStore state changed to:', currentStoreValue === undefined ? 'undefined' : (currentStoreValue === null ? 'null' : currentStoreValue?.id));
-	// }
-
 	async function handleLogout() {
-		// console.log('[+layout.svelte] Attempting logout by navigating to /logout endpoint...');
 		await goto('/logout');
 	}
 
 	// Basis-Styling für Navigationslinks
 	const navLinkClasses = 'px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out';
-	const activeNavLinkClasses = 'bg-gray-900 text-white'; // Beispiel für aktiven Link, muss ggf. dynamisch gesetzt werden
 	const inactiveNavLinkClasses = 'text-gray-700 hover:bg-gray-200 hover:text-gray-900';
 	const buttonClasses = 'px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-150 ease-in-out';
-	const primaryButtonClasses = 'text-white bg-blue-600 hover:bg-blue-700';
-	const secondaryButtonClasses = 'text-gray-700 bg-gray-200 hover:bg-gray-300';
+
 </script>
 
 {#if $navigating || $isFormSubmitting}
@@ -72,7 +60,9 @@
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/home">Home</a>
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/students">Students</a>
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/courses">Courses</a>
-						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/staff">Staff</a>
+						{#if $userStore.user_metadata.role !== 'student'}
+							<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/staff">Staff</a>
+						{/if}
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/private/flashdecks">⚡FlashDecks</a>
 						<button class="{buttonClasses} bg-red-500 hover:bg-red-700 text-white" on:click={handleLogout}
 						>Logout</button

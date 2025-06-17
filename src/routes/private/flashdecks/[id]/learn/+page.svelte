@@ -1,179 +1,151 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
 
 	export let data: PageData;
-
-	$: ({ deck, cards: initialCards } = data);
+	$: ({ deck, cards, isOwner, deckId } = data);
 
 	let currentCardIndex = 0;
-	let isFlipped = false;
-	let sessionFinished = false;
-	let learnableCards: typeof initialCards = [];
+	let showFront = true;
 
-	// Konsistente Styling-Klassen
-	const cardBaseClasses = "bg-white shadow-xl rounded-lg p-8 min-h-[250px] md:min-h-[300px] flex flex-col justify-center items-center text-center transition-all duration-300 ease-in-out";
-	const buttonBaseClasses = "px-6 py-3 rounded-md text-base font-medium shadow-sm transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2";
-	const primaryButtonClasses = `${buttonBaseClasses} text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500`;
-	const secondaryButtonClasses = `${buttonBaseClasses} text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500`;
-	const greenButtonClasses = `${buttonBaseClasses} text-white bg-green-500 hover:bg-green-600 focus:ring-green-400`;
-	const redButtonClasses = `${buttonBaseClasses} text-white bg-red-500 hover:bg-red-600 focus:ring-red-400`;
-	const grayButtonClasses = `${buttonBaseClasses} text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-gray-400`;
+	// Simple client-side tracking for demonstration purposes
+	// let knownCount = 0; // Could be used for more complex logic
 
-
-	function initializeSession(cardsToLearn: typeof initialCards) {
-		// Karten sind bereits serverseitig gemischt und als `initialCards` übergeben
-		// Für den ersten Durchlauf verwenden wir die serverseitig gemischten Karten
-		learnableCards = [...cardsToLearn];
-		currentCardIndex = 0;
-		isFlipped = false;
-		sessionFinished = false;
-		if (learnableCards.length === 0) {
-			sessionFinished = true;
-		}
-	}
-
-	onMount(() => {
-		initializeSession(initialCards);
-	});
-
-	$: currentCard = learnableCards[currentCardIndex];
-	$: cardDynamicClasses = `${cardBaseClasses} ${isFlipped ? 'transform rotate-y-180' : ''}`;
-
+	$: currentCard = cards && cards.length > 0 ? cards[currentCardIndex] : null;
 
 	function flipCard() {
-		isFlipped = !isFlipped;
+		showFront = !showFront;
 	}
 
-	function handleAnswer(known: boolean) {
-		// Zukünftige Logik für Spaced Repetition könnte hier einhaken.
-		// Fürs Erste gehen wir einfach zur nächsten Karte.
-		goToNextCard();
-	}
-
-	function goToNextCard() {
-		if (currentCardIndex < learnableCards.length - 1) {
+	function nextCard(_knewIt: boolean) {
+		// _knewIt could be used to save learning progress
+		if (currentCardIndex < cards.length - 1) {
 			currentCardIndex++;
-			isFlipped = false;
+			showFront = true;
 		} else {
-			sessionFinished = true;
-			isFlipped = false; // Sicherstellen, dass die letzte Karte nicht umgedreht bleibt
+			// Optional: Display message when all cards have been viewed
+			const allCardsViewedElement = document.getElementById('allCardsViewedMessage');
+			if (allCardsViewedElement) {
+				allCardsViewedElement.classList.remove('hidden');
+			}
 		}
 	}
 
-	function restartSession() {
-		// Mische die Karten clientseitig für jede neue "Nochmal lernen"-Sitzung
-		const newShuffledCards = [...initialCards].sort(() => Math.random() - 0.5);
-		initializeSession(newShuffledCards);
+	function previousCard() {
+		if (currentCardIndex > 0) {
+			currentCardIndex--;
+			showFront = true;
+			const allCardsViewedElement = document.getElementById('allCardsViewedMessage');
+			if (allCardsViewedElement) {
+				allCardsViewedElement.classList.add('hidden');
+			}
+		}
+	}
+
+	function restartLearnSession() {
+		currentCardIndex = 0;
+		showFront = true;
+		// knownCount = 0;
+		const allCardsViewedElement = document.getElementById('allCardsViewedMessage');
+		if (allCardsViewedElement) {
+			allCardsViewedElement.classList.add('hidden');
+		}
 	}
 
 </script>
 
-<div class="container mx-auto p-4 md:p-8 flex flex-col items-center min-h-screen bg-gray-100">
-	{#if deck}
-		<div class="w-full max-w-xl xl:max-w-2xl">
-			<div class="mb-6 text-center">
-				<a href="/private/flashdecks/{deck.flashdeck_id}" class="text-blue-600 hover:text-blue-800 hover:underline text-sm">
-					&larr; Zurück zu "{deck.name}"
-				</a>
-				<h1 class="text-3xl md:text-4xl font-bold mt-2 text-gray-800">Deck lernen: {deck.name}</h1>
+<div class="container mx-auto p-4">
+	<div class="mb-6">
+		<a href="/private/flashdecks/{deckId}" class="text-blue-500 hover:underline">
+			&larr; Back to Deck "{deck.name}"
+		</a>
+		<h1 class="text-3xl font-bold mt-2">Learn Session: {deck.name}</h1>
+		{#if isOwner}
+			<p class="text-sm text-gray-500">You are the owner of this deck.</p>
+		{/if}
+	</div>
+
+	{#if cards && cards.length > 0}
+		<div class="my-4">
+			<p class="text-gray-700">Card {currentCardIndex + 1} of {cards.length}</p>
+			<!-- Progress bar -->
+			<div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-1">
+				<div
+					class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+					style="width: {((currentCardIndex + 1) / cards.length) * 100}%">
+				</div>
 			</div>
+		</div>
 
-			{#if sessionFinished}
-				<div class="{cardBaseClasses} justify-center items-center">
-					<h2 class="text-2xl md:text-3xl font-semibold text-green-600 mb-4">🎉 Geschafft! 🎉</h2>
-					<p class="text-gray-700 text-lg mb-6">Du hast alle Karten in diesem Deck angesehen.</p>
-					<div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-						<button on:click={restartSession} class="{primaryButtonClasses} w-full sm:w-auto">
-							Nochmal lernen
-						</button>
-						<a href="/private/flashdecks/{deck.flashdeck_id}" class="{secondaryButtonClasses} w-full sm:w-auto text-center">
-							Zurück zum Deck
-						</a>
+		{#if currentCard}
+			<div
+				class="bg-white shadow-lg rounded-lg p-8 min-h-[250px] flex flex-col items-center justify-center text-center cursor-pointer mb-6 transition-all duration-300 ease-in-out hover:shadow-xl"
+				on:click={flipCard}
+				role="button"
+				tabindex="0"
+				on:keydown={(e) => {if (e.key === ' ' || e.key === 'Enter') flipCard()}}
+				aria-live="polite"
+			>
+				{#if showFront}
+					<div>
+						<p class="text-xs text-gray-500 mb-2 uppercase">Front</p>
+						<p class="text-2xl break-words">{currentCard.front_content}</p>
 					</div>
-				</div>
-			{:else if currentCard}
-				<div class="mb-4 text-center text-gray-600 font-medium">
-					Karte {currentCardIndex + 1} von {learnableCards.length}
-				</div>
-
-				<!-- Flashcard Container -->
-				<div class="perspective">
-					<div class="{cardBaseClasses} {isFlipped ? 'card-flipped' : ''} cursor-pointer" on:click={flipCard} title="Klicken zum Umdrehen">
-						<!-- Vorderseite -->
-						<div class="card-face card-front absolute inset-0 flex flex-col justify-center items-center p-6">
-							<p class="text-xl md:text-2xl text-gray-800 whitespace-pre-wrap">{currentCard.front_content}</p>
-						</div>
-						<!-- Rückseite -->
-						<div class="card-face card-back absolute inset-0 flex flex-col justify-center items-center p-6">
-							<p class="text-xl md:text-2xl text-gray-800 whitespace-pre-wrap">{currentCard.back_content}</p>
-						</div>
-					</div>
-				</div>
-
-
-				<div class="mt-8 flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:justify-center sm:items-center sm:space-x-4">
-					{#if !isFlipped}
-						<button on:click={flipCard} class="{primaryButtonClasses} w-full sm:w-auto">
-							Antwort anzeigen
-						</button>
-					{:else}
-						<button on:click={() => handleAnswer(false)} class="{redButtonClasses} w-full sm:w-auto">
-							Nicht gewusst
-						</button>
-						<button on:click={() => handleAnswer(true)} class="{greenButtonClasses} w-full sm:w-auto">
-							Gewusst
-						</button>
-					{/if}
-				</div>
-				{#if isFlipped && !sessionFinished}
-					<div class="mt-4 text-center">
-						<button on:click={goToNextCard} class="{grayButtonClasses} w-full sm:w-auto">
-							Nächste Karte &rarr;
-						</button>
+				{:else}
+					<div>
+						<p class="text-xs text-gray-500 mb-2 uppercase">Back</p>
+						<p class="text-2xl break-words">{currentCard.back_content}</p>
 					</div>
 				{/if}
+			</div>
 
-			{:else if learnableCards.length > 0 && !sessionFinished}
-				<div class="{cardBaseClasses} justify-center items-center">
-					<p class="text-gray-600 text-lg">Lade Karte...</p>
+			<div class="flex flex-wrap justify-between items-center gap-2 mb-6">
+				<button
+					on:click={previousCard}
+					disabled={currentCardIndex === 0}
+					class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded disabled:opacity-50"
+				>
+					Previous
+				</button>
+				<button
+					on:click={flipCard}
+					class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+				>
+					Flip
+				</button>
+				<div class="flex gap-2">
+					<button
+						on:click={() => nextCard(false)}
+						disabled={currentCardIndex === cards.length - 1 && !showFront}
+						class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+					>
+						Didn't know
+					</button>
+					<button
+						on:click={() => nextCard(true)}
+						disabled={currentCardIndex === cards.length - 1 && !showFront}
+						class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+					>
+						Knew it
+					</button>
 				</div>
-			{:else}
-				<!-- Dieser Fall sollte idealerweise nicht eintreten, wenn die Logik korrekt ist -->
-				<div class="{cardBaseClasses} justify-center items-center">
-					<p class="text-red-500 text-lg">Keine Karten zum Lernen in diesem Deck gefunden oder ein Fehler ist aufgetreten.</p>
-					<a href="/private/flashdecks/{deck.flashdeck_id}" class="{secondaryButtonClasses} mt-6 w-full sm:w-auto text-center">
-						Zurück zum Deck
-					</a>
-				</div>
-			{/if}
-		</div>
+			</div>
+
+			<div id="allCardsViewedMessage" class="text-center my-6 p-4 bg-green-100 text-green-700 rounded-md hidden">
+				<p class="font-semibold">Great! You have viewed all cards in this round.</p>
+			</div>
+		{/if}
 	{:else}
-		<div class="w-full max-w-xl xl:max-w-2xl text-center">
-			<p class="text-red-500 text-xl p-8 bg-white shadow-lg rounded-lg">Deckinformationen konnten nicht geladen werden.</p>
+		<div class="text-center py-10">
+			<p class="text-xl text-gray-700 mb-4">This deck contains no cards to learn.</p>
+			{#if isOwner}
+				<p class="text-gray-600 mb-6">First, add some cards to your deck.</p>
+				<a
+					href="/private/flashdecks/{deckId}"
+					class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+				>
+					Add Cards
+				</a>
+			{/if}
 		</div>
 	{/if}
 </div>
-
-<style>
-    .perspective {
-        perspective: 1000px;
-        min-height: inherit; /* Ensure it takes up the card's min-height */
-    }
-    .card-base { /* Renamed from cardClasses to avoid conflict, used by JS */
-        /* min-height is now on cardBaseClasses in script */
-        /* other base styles for the card itself if needed */
-    }
-    .card-flipped {
-        transform: rotateY(180deg);
-    }
-    .card-face {
-        backface-visibility: hidden;
-        width: 100%;
-        height: 100%;
-        /* Ensure p-6 padding is applied here if not on parent */
-    }
-    .card-back {
-        transform: rotateY(180deg);
-    }
-</style>

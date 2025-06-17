@@ -6,14 +6,15 @@
 
 	export let course_id: string | null = null;
 
-	let chartCanvas: HTMLCanvasElement;
+	let chartCanvas: HTMLCanvasElement | undefined; // Canvas kann undefined sein, wenn nicht im DOM
 	let distributionChart: Chart | null = null;
 
 	let isLoading = true;
 	let errorMsg: string | null = null;
 	let courseName: string | null = null;
-	let assignmentsList: { assignment_id: number; assignment_name: string }[] = [];
-	let selectedView: string = 'overall'; // 'overall' or assignment_id as string
+	// Änderung: assignment_id ist jetzt string
+	let assignmentsList: { assignment_id: string; assignment_name: string }[] = [];
+	let selectedView: string = 'overall'; // 'overall' oder assignment_id als string
 
 	let chartDisplayData: { labels: string[]; data: number[] } | null = null;
 	let averageGradeDisplay: string | null = null;
@@ -58,10 +59,10 @@
 			throw new Error(`Failed to fetch assignment weights for overall calculation: ${assignmentsError?.message}`);
 		}
 
-		const usableAssignments = courseAssignmentsWithWeight.filter(a => typeof a.weight === 'number' && a.weight > 0);
+		// Annahme: assignment_id von Supabase ist string (UUID)
+		const usableAssignments = courseAssignmentsWithWeight.filter(a => typeof a.weight === 'number' && a.weight > 0 && a.assignment_id);
 
 		if (usableAssignments.length === 0) {
-			errorMsg = 'No assignments with defined weights found to calculate overall grades.';
 			chartDisplayData = { labels: [], data: [] };
 			averageGradeDisplay = 'N/A';
 			return;
@@ -86,7 +87,7 @@
 				.from('student_grades')
 				.select('assignment_id, grade')
 				.eq('enrollment_id', enrollment.enrollment_id)
-				.in('assignment_id', usableAssignments.map(a => a.assignment_id));
+				.in('assignment_id', usableAssignments.map(a => a.assignment_id)); // assignment_id ist hier string
 
 			if (gradesError) {
 				console.warn(`Could not fetch grades for enrollment ${enrollment.enrollment_id}: ${gradesError.message}`);
@@ -119,7 +120,7 @@
 		const gradeCounts: { [key: string]: number } = {};
 		studentFinalGrades.forEach(grade => {
 			const roundedGrade = roundToNearestQuarter(grade);
-			const bin = roundedGrade.toFixed(2); // Format as "X.00", "X.25", "X.50", "X.75"
+			const bin = roundedGrade.toFixed(2);
 			gradeCounts[bin] = (gradeCounts[bin] || 0) + 1;
 		});
 
@@ -132,14 +133,15 @@
 		averageGradeDisplay = (sumOfGrades / studentFinalGrades.length).toFixed(2);
 	}
 
-	async function fetchAssignmentGradeDistribution(courseIdNum: number, assignmentIdNum: number) {
+	// Änderung: assignmentId ist jetzt string
+	async function fetchAssignmentGradeDistribution(courseIdNum: number, assignmentId: string) {
 		chartDisplayData = null;
 		averageGradeDisplay = null;
 
 		const { data: gradesData, error: gradesError } = await supabase
 			.from('student_grades')
 			.select('grade, enrollments!inner(course_id)')
-			.eq('assignment_id', assignmentIdNum)
+			.eq('assignment_id', assignmentId) // assignmentId ist string
 			.eq('enrollments.course_id', courseIdNum)
 			.not('grade', 'is', null);
 
@@ -164,7 +166,7 @@
 		const gradeCounts: { [key: string]: number } = {};
 		gradesForAssignment.forEach(grade => {
 			const roundedGrade = roundToNearestQuarter(grade);
-			const bin = roundedGrade.toFixed(2); // Format as "X.00", "X.25", "X.50", "X.75"
+			const bin = roundedGrade.toFixed(2);
 			gradeCounts[bin] = (gradeCounts[bin] || 0) + 1;
 		});
 
@@ -181,19 +183,20 @@
 		if (!currentCourseIdInternal) {
 			isLoading = false;
 			errorMsg = 'Course ID not available.';
-			renderChart();
 			return;
 		}
 
 		isLoading = true;
 		errorMsg = null;
 		showNoAssignmentsMessage = false;
+		chartDisplayData = null;
+		averageGradeDisplay = null;
+
 
 		const courseIdNum = parseInt(currentCourseIdInternal);
 		if (isNaN(courseIdNum)) {
 			errorMsg = 'Invalid Course ID format.';
 			isLoading = false;
-			renderChart();
 			return;
 		}
 
@@ -209,16 +212,15 @@
 			if (assignmentsList.length === 0) {
 				const { data: fetchedAssignments, error: assignmentsFetchError } = await supabase
 					.from('assignments')
-					.select('assignment_id, assignment_name')
+					.select('assignment_id, assignment_name') // assignment_id kommt als string (UUID)
 					.eq('course_id', courseIdNum)
 					.order('assignment_name');
 				if (assignmentsFetchError) throw new Error(`Failed to fetch assignments: ${assignmentsFetchError.message}`);
-				assignmentsList = fetchedAssignments || [];
+				assignmentsList = fetchedAssignments || []; // Typ von assignmentsList.assignment_id ist jetzt string
 			}
 
 			if (assignmentsList.length === 0) {
 				showNoAssignmentsMessage = true;
-				errorMsg = "No assignments have been created yet.";
 				chartDisplayData = { labels: [], data: [] };
 				averageGradeDisplay = 'N/A';
 			} else {
@@ -226,9 +228,9 @@
 				if (selectedView === 'overall') {
 					await fetchOverallGradeDistribution(courseIdNum);
 				} else {
-					const assignmentIdNum = parseInt(selectedView);
-					if (isNaN(assignmentIdNum)) throw new Error('Invalid assignment selected.');
-					await fetchAssignmentGradeDistribution(courseIdNum, assignmentIdNum);
+					// Änderung: selectedView direkt als string übergeben
+					if (!selectedView) throw new Error('Invalid assignment selected.'); // Sicherheitscheck
+					await fetchAssignmentGradeDistribution(courseIdNum, selectedView);
 				}
 			}
 		} catch (e: any) {
@@ -239,19 +241,18 @@
 			showNoAssignmentsMessage = false;
 		} finally {
 			isLoading = false;
-			renderChart();
 		}
 	}
 
 	function getChartTitle(): string {
-		if (!courseName && !isLoading && !showNoAssignmentsMessage) return 'Grade Distribution';
 		if (isLoading && !showNoAssignmentsMessage) return 'Loading Grade Distribution...';
 		if (showNoAssignmentsMessage && courseName) return `${courseName} - Grade Distribution`;
 		if (showNoAssignmentsMessage) return 'Grade Distribution';
+		if (errorMsg && !isLoading) return courseName ? `${courseName} - Grade Distribution` : 'Grade Distribution';
 
 
 		let title = `${courseName || 'Course'} - Grade Distribution`;
-		const selectedAssignment = assignmentsList.find(a => a.assignment_id.toString() === selectedView);
+		const selectedAssignment = assignmentsList.find(a => a.assignment_id === selectedView); // Direkter Vergleich mit string
 
 		if (selectedView === 'overall') {
 			title += ' (Overall Student Performance)';
@@ -259,9 +260,9 @@
 			title += ` (${selectedAssignment.assignment_name})`;
 		}
 
-		if (averageGradeDisplay && averageGradeDisplay !== 'N/A' && !isLoading) {
+		if (averageGradeDisplay && averageGradeDisplay !== 'N/A' && !isLoading && !errorMsg && chartDisplayData && chartDisplayData.labels.length > 0) {
 			title += ` (Avg: ${averageGradeDisplay})`;
-		} else if (averageGradeDisplay === 'N/A' && !isLoading) {
+		} else if (averageGradeDisplay === 'N/A' && !isLoading && !errorMsg && chartDisplayData && chartDisplayData.labels.length > 0) {
 			title += ` (Avg: N/A)`;
 		}
 		return title;
@@ -276,29 +277,19 @@
 
 	function renderChart() {
 		destroyChart();
-		if (showNoAssignmentsMessage || !chartCanvas) {
+
+		if (!chartCanvas) {
 			return;
 		}
-		const ctx = chartCanvas.getContext('2d');
-		if (!ctx) return;
-
-		ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
-
-		if (errorMsg && (!chartDisplayData || chartDisplayData.labels.length === 0)) {
-			ctx.font = '16px Arial';
-			ctx.textAlign = 'center';
-			ctx.fillStyle = '#EF4444'; // red-500
-			ctx.fillText(errorMsg, chartCanvas.width / 2, chartCanvas.height / 2);
-			return;
-		}
-
 		if (!chartDisplayData || chartDisplayData.labels.length === 0) {
-			ctx.font = '16px Arial';
-			ctx.textAlign = 'center';
-			ctx.fillStyle = '#6B7280';
-			let noDataMessage = 'No grade data available for this view.';
-			if (errorMsg) noDataMessage = errorMsg;
-			ctx.fillText(noDataMessage, chartCanvas.width / 2, chartCanvas.height / 2);
+			const ctx = chartCanvas.getContext('2d');
+			if (ctx) ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+			return;
+		}
+
+		const ctx = chartCanvas.getContext('2d');
+		if (!ctx) {
+			console.error('Failed to get 2D context from canvas for chart rendering.');
 			return;
 		}
 
@@ -326,7 +317,7 @@
 							text: 'Count'
 						},
 						ticks: {
-							stepSize: 1 // Ensure y-axis ticks are integers
+							stepSize: 1
 						}
 					},
 					x: {
@@ -351,7 +342,6 @@
 							label: function(context: TooltipItem<'bar'>) {
 								let countLabel = context.dataset.label || 'Count';
 								if (context.parsed.y !== null) {
-									// Ensure the label shows the bin correctly (e.g., "3.25")
 									const binLabel = parseFloat(context.label).toFixed(2);
 									return `${binLabel}: ${context.parsed.y} ${countLabel.includes('Students') ? 'students' : 'grades'}`;
 								}
@@ -371,7 +361,6 @@
 		} else {
 			isLoading = false;
 			errorMsg = "Course ID not provided on mount.";
-			renderChart();
 		}
 	});
 
@@ -386,30 +375,44 @@
 		chartDisplayData = null;
 		averageGradeDisplay = null;
 		showNoAssignmentsMessage = false;
+		errorMsg = null;
 		fetchData();
 	}
 
 	function handleViewChange() {
+		errorMsg = null;
 		if (course_id && !showNoAssignmentsMessage) {
 			fetchData();
 		}
 	}
 
+	$: {
+		if (chartCanvas && !isLoading && !showNoAssignmentsMessage && !errorMsg && chartDisplayData && chartDisplayData.labels.length > 0) {
+			renderChart();
+		} else if (distributionChart) {
+			destroyChart();
+			if (chartCanvas) {
+				const ctx = chartCanvas.getContext('2d');
+				if (ctx) ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+			}
+		}
+	}
+
 </script>
 
-<div class="p-1">
-	<div class="h-96 relative">
-		<div class="p-4 bg-gray-50 rounded-lg shadow mb-4 ">
-			<div class="flex flex-col sm:flex-row justify-between items-center mb-3">
+<div class="p-1 h-full">
+	<div class="flex flex-col h-96 bg-white shadow-lg rounded-lg overflow-hidden">
+		<div class="p-4 bg-gray-50 border-b border-gray-200 flex-shrink-0">
+			<div class="flex flex-col sm:flex-row justify-between items-center">
 				<label for="gradeViewSelect" class="text-md font-semibold text-gray-700 mb-2 sm:mb-0 sm:mr-3">View Distribution For:</label>
 				<select id="gradeViewSelect" bind:value={selectedView} on:change={handleViewChange}
 								class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm w-full sm:w-auto"
-								disabled={isLoading || showNoAssignmentsMessage}>
+								disabled={isLoading || (showNoAssignmentsMessage && assignmentsList.length === 0) }>
 					<option value="overall">Overall Course Performance</option>
 					{#if assignmentsList.length > 0}
 						<optgroup label="Individual Assignments">
 							{#each assignmentsList as assignment (assignment.assignment_id)}
-								<option value={assignment.assignment_id.toString()}>
+								<option value={assignment.assignment_id}> <!-- value ist jetzt string -->
 									{assignment.assignment_name}
 								</option>
 							{/each}
@@ -418,23 +421,31 @@
 				</select>
 			</div>
 		</div>
-		{#if isLoading}
-			<div class="bg-white shadow-lg rounded-lg p-4 h-full flex items-center justify-center">
-				<p class="text-gray-500 text-lg">Loading Grade Distribution...</p>
-				<!-- Optional: Add a spinner SVG here -->
-			</div>
-		{:else if showNoAssignmentsMessage}
-			<div class="bg-white shadow-lg rounded-lg p-6 h-full flex flex-col items-center justify-center text-center">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-				</svg>
-				<p class="text-xl font-semibold text-gray-700">No Assignments Yet</p>
-				<p class="text-md text-gray-500 mt-1">No assignments have been created yet for this course.</p>
-			</div>
-		{:else}
-			<div class="bg-white shadow-lg rounded-lg p-4 h-3/4">
+
+		<div class="flex-grow p-4 relative">
+			{#if isLoading}
+				<div class="absolute inset-0 flex items-center justify-center">
+					<p class="text-gray-500 text-lg">Loading Grade Distribution...</p>
+				</div>
+			{:else if showNoAssignmentsMessage}
+				<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					</svg>
+					<p class="text-lg font-semibold text-gray-700">No Assignments Yet</p>
+					<p class="text-sm text-gray-500 mt-1">No assignments have been created yet for this course.</p>
+				</div>
+			{:else if errorMsg}
+				<div class="absolute inset-0 flex items-center justify-center text-center p-2">
+					<p class="text-md text-red-500">{errorMsg}</p>
+				</div>
+			{:else if !chartDisplayData || chartDisplayData.labels.length === 0}
+				<div class="absolute inset-0 flex items-center justify-center text-center p-2">
+					<p class="text-md text-gray-500">No grade data available for this view.</p>
+				</div>
+			{:else}
 				<canvas bind:this={chartCanvas}></canvas>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 </div>

@@ -1,9 +1,9 @@
 <!-- src/routes/signup/+page.svelte -->
 <script lang="ts">
-    import { supabase } from '$lib/supabaseClient'; // .js entfernt für Konsistenz, falls es ein .ts File ist
+    import { supabase } from '$lib/supabaseClient';
     import { goto } from '$app/navigation';
-import type { AuthError, User, PostgrestError } from "@supabase/supabase-js";
-let email = "";
+    import type { AuthError, PostgrestError } from "@supabase/supabase-js"; // 'User' entfernt, da nicht verwendet
+    let email = "";
     let password = '';
     let role = 'student'; // Standardrolle
     let first_name = '';
@@ -18,10 +18,6 @@ let email = "";
             options: {
                 data: {
                     role,
-                    // Es ist üblich, first_name und last_name auch im user_metadata zu speichern,
-                    // aber für die Tabelleneinträge ist es hier wichtiger.
-                    // first_name: first_name,
-                    // last_name: last_name
                 }
             }
         });
@@ -32,10 +28,9 @@ let email = "";
             return;
         }
 
-        // Überprüfen, ob data.user vorhanden ist, bevor auf data.user.id zugegriffen wird
         if (data && data.user) {
             const userId = data.user.id;
-            let insertError: PostgrestError | null = null; // Um den Fehler spezifischer zu typisieren
+            let insertError: PostgrestError | null = null;
 
             try {
                 if (role === 'student') {
@@ -54,13 +49,12 @@ let email = "";
                         last_name
                     });
                     insertError = instructorError;
-                } else if (role === 'admin') { // Hinzugefügter Fall für Admins
+                } else if (role === 'admin') {
                     const { error: adminError } = await supabase.from('admins').insert({
                         user_id: userId,
                         email,
                         first_name,
                         last_name
-                        // admin_specific_field: 'some_value' // Falls es spezifische Felder für Admins gibt
                     });
                     insertError = adminError;
                 }
@@ -68,23 +62,12 @@ let email = "";
                 if (insertError) {
                     errorMsg = `User created, but failed to create profile: ${insertError.message}`;
                     console.error('Error inserting profile data:', insertError.message);
-                    // Hier könnte man in Erwägung ziehen, den Auth-Benutzer wieder zu löschen,
-                    // um inkonsistente Zustände zu vermeiden, aber das hängt von den Anforderungen ab.
-                    // await supabase.auth.admin.deleteUser(userId); // Benötigt Service-Rolle
                     return;
                 }
-
-                // Erfolgreich, weiterleiten.
-                // Die Weiterleitung sollte idealerweise zu einer Seite führen, die die Rolle berücksichtigt,
-                // oder zu einer allgemeinen "Willkommen"-Seite, bevor der Benutzer zu spezifischen Bereichen navigiert.
-                // Für Admins könnte dies /private/staff oder /private/home sein.
-                // Für Studenten /private/home oder /private/dashboard.
-                // Für Instruktoren /private/courses oder /private/home.
-                // Aktuell wird pauschal zu /private/home weitergeleitet.
                 await goto('/private/home');
 
             } catch (e: unknown) {
-                const catchedError = e as AuthError;
+                const catchedError = e as AuthError; // Sicherstellen, dass der Typ korrekt ist
                 errorMsg = `An unexpected error occurred during profile creation: ${catchedError.message}`;
                 console.error('Unexpected error during profile creation:', catchedError);
             }
@@ -95,49 +78,90 @@ let email = "";
     }
 </script>
 
-<h1>Sign Up</h1>
-<form on:submit|preventDefault={handleSignup}>
-    <div class="mb-4">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="first_name">
-            First Name:
-        </label>
-        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="first_name" type="text" bind:value={first_name} required />
+<div class="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Create your account
+        </h2>
     </div>
-    <div class="mb-4">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="last_name">
-            Last Name:
-        </label>
-        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="last_name" type="text" bind:value={last_name} required />
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <form class="space-y-6" on:submit|preventDefault={handleSignup}>
+                <div>
+                    <label for="first_name" class="block text-sm font-medium text-gray-700">
+                        First Name
+                    </label>
+                    <div class="mt-1">
+                        <input id="first_name" name="first_name" type="text" bind:value={first_name} required
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="last_name" class="block text-sm font-medium text-gray-700">
+                        Last Name
+                    </label>
+                    <div class="mt-1">
+                        <input id="last_name" name="last_name" type="text" bind:value={last_name} required
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">
+                        Email address
+                    </label>
+                    <div class="mt-1">
+                        <input id="email" name="email" type="email" bind:value={email} autocomplete="email" required
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">
+                        Password
+                    </label>
+                    <div class="mt-1">
+                        <input id="password" name="password" type="password" bind:value={password} autocomplete="current-password" required
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700">
+                        Role
+                    </label>
+                    <div class="mt-1">
+                        <select id="role" name="role" bind:value={role} required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="student">Student</option>
+                            <option value="instructor">Instructor</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit"
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Create Account
+                    </button>
+                </div>
+            </form>
+
+            {#if errorMsg}
+                <p class="mt-2 text-center text-sm text-red-600">
+                    {errorMsg}
+                </p>
+            {/if}
+
+            <p class="mt-6 text-center text-sm text-gray-600">
+                Already have an account?
+                <a href="/login" class="font-medium text-indigo-600 hover:text-indigo-500">
+                    Log in
+                </a>
+            </p>
+        </div>
     </div>
-    <div class="mb-4">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
-            Email:
-        </label>
-        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="email" type="email" bind:value={email} required />
-    </div>
-    <div class="mb-6">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
-            Password:
-        </label>
-        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password" bind:value={password} required />
-    </div>
-    <div class="mb-4">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="role">
-            Role:
-        </label>
-        <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="role" bind:value={role} required>
-            <option value="student">Student</option>
-            <option value="instructor">Instructor</option>
-            <option value="admin">Admin</option>
-        </select>
-    </div>
-    <div class="flex items-center justify-between">
-        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
-            Create Account
-        </button>
-    </div>
-</form>
-{#if errorMsg}<p class="text-red-500 text-xs italic mt-4">{errorMsg}</p>{/if}
-<p class="mt-4 text-center text-sm">
-    Already have an account? <a href="/login" class="font-bold text-blue-500 hover:text-blue-800">Log in</a>
-</p>
+</div>

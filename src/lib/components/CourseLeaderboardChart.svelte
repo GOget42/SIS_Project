@@ -18,15 +18,15 @@
 	function getRankIcon(rank: number): string {
 		switch (rank) {
 			case 1:
-				return '👑'; // Gold Crown
+				return '🥇'; // Gold Crown
 			case 2:
 				return '🥈'; // Silver Medal
 			case 3:
 				return '🥉'; // Bronze Medal
 			case 4:
-				return '💎'; // Diamond
+				return '4️⃣'; // Diamond
 			case 5:
-				return '⭐'; // Star
+				return '5️⃣'; // Star
 			default:
 				return '';
 		}

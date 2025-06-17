@@ -51,69 +51,106 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 		}
 	});
 
-	/**
-	 * Convenience helper für den direkten Aufruf von getSession().
-	 * Verfügbar unter event.locals.getSession.
-	 */
 	event.locals.getSession = async () => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		// console.log('🔑 [HOOK - getSession() helper] Fetched session:', session ? session.user.id : null);
 		return session;
 	};
 
-	// Befüllt event.locals.session und event.locals.user
-	// Dies geschieht zusätzlich zum getSession Helper, um direkten Zugriff zu ermöglichen.
 	try {
-		const { data: { session: currentSessionData } } = await event.locals.supabase.auth.getSession();
-		// console.log('🔑 [HOOK] Initial session fetch for locals.session:', currentSessionData ? currentSessionData.user?.id : null);
-		event.locals.session = currentSessionData;
+		const {
+			data: { session: currentSessionData }
+		} = await event.locals.supabase.auth.getSession();
 
-		if (event.locals.session && event.locals.session.access_token) {
-			const { data: { user }, error: userError } = await event.locals.supabase.auth.getUser();
+		if (currentSessionData && currentSessionData.access_token) {
+			event.locals.session = currentSessionData; // Gültige Session gefunden und gesetzt
+			const {
+				data: { user },
+				error: userError
+			} = await event.locals.supabase.auth.getUser();
+
 			if (userError) {
 				console.error('❌ [HOOK] Error fetching user for locals.user:', userError.message);
 				event.locals.user = null;
-			} else {
-				// console.log('✅ [HOOK] Authenticated user for locals.user:', user?.id);
+				event.locals.session = null;
+				const { error: signOutError } = await event.locals.supabase.auth.signOut();
+				if (signOutError) {
+					console.error('❗ [HOOK] Error during signOut (userError case):', signOutError.message);
+				} else {
+					console.log('🗑️ [HOOK] Session cleared due to user fetch error.');
+				}
+			} else if (user) {
 				event.locals.user = user;
+			} else {
+				// getUser gab keinen Fehler zurück, aber der Benutzer ist null.
+				console.warn('⚠️ [HOOK] User data is null after getUser() without an error. Clearing session.');
+				event.locals.user = null;
+				event.locals.session = null;
+				const { error: signOutError } = await event.locals.supabase.auth.signOut();
+				if (signOutError) {
+					console.error('❗ [HOOK] Error during signOut (null user, no error case):', signOutError.message);
+				} else {
+					console.log('🗑️ [HOOK] Session cleared due to null user without error.');
+				}
 			}
 		} else {
-			// console.log('🚫 [HOOK] No valid session found for locals.session');
+			// currentSessionData ist null ODER currentSessionData fehlt access_token
 			event.locals.user = null;
+			event.locals.session = null;
+			if (currentSessionData) {
+				// currentSessionData war vorhanden, aber ungültig (z.B. kein access_token)
+				console.warn('⚠️ [HOOK] Session data found but was invalid (e.g., no access_token). Clearing session.');
+				const { error: signOutError } = await event.locals.supabase.auth.signOut();
+				if (signOutError) {
+					console.error('❗ [HOOK] Error during signOut (invalid session data):', signOutError.message);
+				} else {
+					console.log('🗑️ [HOOK] Session cleared due to invalid session data.');
+				}
+			}
+			// Wenn currentSessionData von Anfang an null war, gibt es keine aktive Sitzung zum Abmelden.
 		}
-	} catch (err: any) {
-		console.error('❗ [HOOK] Error during initial session/user population:', err?.message || err);
+	} catch (err: unknown) { // Geändert von any zu unknown
+		let errorMessage = 'Unknown error during session/user population';
+		if (err instanceof Error) {
+			errorMessage = err.message;
+		} else if (typeof err === 'string') {
+			errorMessage = err;
+		}
+		console.error(`❗ [HOOK] Error: ${errorMessage}`, err);
 		event.locals.session = null;
 		event.locals.user = null;
+
+		// Versuche, Client-seitige Sitzungscookies zu löschen, wenn der Supabase-Client verfügbar ist
+		if (event.locals.supabase && event.locals.supabase.auth) {
+			console.log('ℹ️ [HOOK] Attempting to clear session due to error during population.');
+			const { error: signOutError } = await event.locals.supabase.auth.signOut();
+			if (signOutError) {
+				console.error('❗ [HOOK] Error during signOut in catch block:', signOutError.message);
+			} else {
+				console.log('🗑️ [HOOK] Session cleared in catch block.');
+			}
+		}
 	}
 
 	return resolve(event, {
-		filterSerializedResponseHeaders: (name: string) =>
-			name === 'content-range' || name === 'x-supabase-api-version'
+		filterSerializedResponseHeaders: (name: string) => name === 'content-range' || name === 'x-supabase-api-version'
 	});
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const { session, user } = event.locals; // Diese sind nun durch supabaseHandler befüllt
+	const { session } = event.locals;
 	const { pathname } = event.url;
 
-	// console.log(`[GUARD] Path: ${pathname}, User: ${user?.id}, Session: ${session ? 'exists' : 'null'}`);
-
 	if (!session && pathname.startsWith('/private')) {
-		// console.log(`🚷 [GUARD] Redirecting unauthenticated access from: ${pathname} to /login`);
 		throw redirect(303, '/login');
 	}
 
 	if (session && (pathname === '/login' || pathname === '/register')) {
-		// console.log(`↪️ [GUARD] Already logged in, redirecting from ${pathname} to /private/home`);
 		throw redirect(303, '/private/home');
 	}
 
-	// Spezifische Weiterleitung von der Stammroute, wenn eingeloggt
 	if (session && pathname === '/') {
-		// console.log(`↪️ [GUARD] User is logged in and on '/', redirecting to /private/home`);
 		throw redirect(303, '/private/home');
 	}
 

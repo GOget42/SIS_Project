@@ -263,11 +263,6 @@
                                 <p class="text-lg font-semibold text-gray-800">{admin.first_name} {admin.last_name}</p>
                                 <p class="text-sm text-gray-600">{admin.email}</p>
                             </div>
-                            <div class="flex space-x-3 items-center">
-                                <a href={`/private/staff/admin/${admin.admin_id}`} class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                                    View Details
-                                </a>
-                            </div>
                         </div>
                     </li>
                 {/each}

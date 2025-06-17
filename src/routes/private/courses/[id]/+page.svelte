@@ -41,6 +41,9 @@
     let showAddStudentForm = false;
     let selectedStudentToAddId: string = ''; // For the select input
 
+    // Error message for new assignment weight sum validation
+    let newAssignmentWeightSumError: string | null = null;
+
     let courseEditData = {
         course_name: course?.course_name || '',
         ects: course?.ects?.toString() || '',
@@ -51,7 +54,7 @@
     let newAssignmentData = {
         assignment_name: '',
         due_date: '',
-        weight: ''
+        weight: '' // User inputs as 0-100
     };
 
     let assignmentEditData = {
@@ -84,6 +87,7 @@
         if (form.action === '?/addAssignment') {
             creatingAssignment = false;
             newAssignmentData = { assignment_name: '', due_date: '', weight: '' };
+            newAssignmentWeightSumError = null; // Clear error on success
         }
         if (form.action === '?/updateAssignment') {
             if (form.updatedAssignmentId === editingAssignment?.assignment_id) {
@@ -102,6 +106,11 @@
     } else if (form && !form.success && form.action === '?/addStudent') {
         // Keep form open on error, potentially repopulate selectedStudentToAddId if needed
         selectedStudentToAddId = form.student_id_form || '';
+    }
+
+    // Clear weight sum error when add assignment form is closed
+    $: if (!creatingAssignment) {
+        newAssignmentWeightSumError = null;
     }
 
 
@@ -128,6 +137,7 @@
         };
         creatingAssignment = false;
         showAddStudentForm = false;
+        newAssignmentWeightSumError = null; // Clear any pending error from add form
 
         if (data.enrolledStudents && data.allStudentGradesForCourse) {
             studentGradesEditData = data.enrolledStudents.map(enrollment => {
@@ -175,6 +185,7 @@
         showAddStudentForm = !showAddStudentForm;
         creatingAssignment = false; // Close other forms
         editingAssignment = null;
+        newAssignmentWeightSumError = null; // Clear assignment error
         if (!showAddStudentForm) {
             selectedStudentToAddId = ''; // Reset selection when closing
             if (form?.addStudentError) form.addStudentError = undefined; // Clear previous error
@@ -266,7 +277,7 @@
         return true; // Alle Studenten haben Noten für alle Aufgaben
     }
 
-    const handleMarkFinishedSubmit = async ({ cancel }) => {
+    const handleMarkFinishedSubmit = async ({ cancel }: { cancel: () => void }) => {
         const assignmentsDone = allAssignmentsGraded(
           data.assignments,
           data.enrolledStudents,
@@ -281,6 +292,19 @@
         // Wenn assignmentsDone true ist oder der Benutzer bestätigt hat, mit der Übermittlung fortfahren.
         // Nach der Übermittlung wird die load-Funktion erneut ausgeführt und `data` aktualisiert.
     };
+
+    // Function to calculate total weight of existing assignments
+    function calculateCurrentTotalWeight(existingAssignments: PageData['assignments']): number {
+        if (!existingAssignments || existingAssignments.length === 0) {
+            return 0;
+        }
+        return existingAssignments.reduce((sum, assign) => {
+            if (assign && typeof assign.weight === 'number') {
+                return sum + assign.weight;
+            }
+            return sum;
+        }, 0);
+    }
 
 </script>
 
@@ -367,7 +391,7 @@
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-semibold text-gray-800">Assignments</h2>
                 {#if canManageCourse && course.active} <!-- Nur anzeigen, wenn Kurs aktiv ist -->
-                    <button on:click={() => { creatingAssignment = true; editingAssignment = null; studentGradesEditData = []; }} class="text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+                    <button on:click={() => { creatingAssignment = true; editingAssignment = null; studentGradesEditData = []; newAssignmentWeightSumError = null; }} class="text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out">
                         Add Assignment
                     </button>
                 {/if}
@@ -376,7 +400,39 @@
             {#if creatingAssignment && canManageCourse && course.active}
                 <div transition:slide={{ duration: 300 }}>
                     <h3 class="text-xl font-semibold text-gray-700 mb-4">Add New Assignment</h3>
-                    <form method="POST" action="?/addAssignment" use:enhance class="space-y-4 bg-gray-50 p-6 rounded-lg shadow">
+                    <form method="POST" action="?/addAssignment" use:enhance={({ formData, cancel }) => {
+                        newAssignmentWeightSumError = null; // Reset error on new submission attempt
+                        const currentTotalWeight = calculateCurrentTotalWeight(data.assignments);
+                        const newWeightInputString = formData.get('weight') as string | null;
+
+                        if (newWeightInputString === null || newWeightInputString.trim() === '') {
+                            newAssignmentWeightSumError = 'Weight is required and must be a number between 0 and 100.';
+                            cancel();
+                            return;
+                        }
+                        const newWeightInput = parseFloat(newWeightInputString);
+
+                        if (isNaN(newWeightInput) || newWeightInput < 0 || newWeightInput > 100) {
+                            newAssignmentWeightSumError = 'Weight must be a valid number between 0 and 100.';
+                            cancel();
+                            return;
+                        }
+
+                        const newWeightDecimal = newWeightInput / 100;
+                        const epsilon = 0.00001; // For floating point comparison
+
+                        if (currentTotalWeight + newWeightDecimal > 1 + epsilon) {
+                            newAssignmentWeightSumError = `The sum of all assignment weights (currently ${(currentTotalWeight * 100).toFixed(0)}%) plus the new assignment's weight (${newWeightInput}%) would exceed 100%.`;
+                            cancel();
+                            return;
+                        }
+
+                        // If validation passes, allow submission.
+                        return async ({ update }) => {
+                            await update({ reset: false }); // Server action handles reset on success
+                            // Reactive statements will handle UI changes
+                        };
+                    }} class="space-y-4 bg-gray-50 p-6 rounded-lg shadow">
                         <div>
                             <label for="new_assignment_name" class="block text-sm font-medium text-gray-700">Assignment Name</label>
                             <input type="text" id="new_assignment_name" name="assignment_name" bind:value={newAssignmentData.assignment_name} required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
@@ -391,13 +447,16 @@
                                 <input type="number" id="new_weight" name="weight" bind:value={newAssignmentData.weight} required min="0" max="100" placeholder="e.g., 20 for 20%" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             </div>
                         </div>
-                        <div class="flex justify-end space-x-3 pt-2">
-                            <button type="button" on:click={() => creatingAssignment = false} class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md shadow-sm">Cancel</button>
-                            <button type="submit" use:formSubmitIndicator class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm">Add Assignment</button>
-                        </div>
-                        {#if form?.action === '?/addAssignment' && form?.message && !form?.success}
+                         {#if newAssignmentWeightSumError}
+                            <p class="text-sm text-red-600 bg-red-50 p-3 rounded-md mt-2">{newAssignmentWeightSumError}</p>
+                        {/if}
+                        {#if form?.action === '?/addAssignment' && form?.message && !form?.success && !newAssignmentWeightSumError}
                             <p class="text-sm text-red-600 bg-red-50 p-3 rounded-md mt-2">{form.message}</p>
                         {/if}
+                        <div class="flex justify-end space-x-3 pt-2">
+                            <button type="button" on:click={() => { creatingAssignment = false; newAssignmentWeightSumError = null; }} class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md shadow-sm">Cancel</button>
+                            <button type="submit" use:formSubmitIndicator class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm">Add Assignment</button>
+                        </div>
                     </form>
                 </div>
             {/if}
@@ -599,7 +658,7 @@
                                     <span class="font-medium text-gray-700">{gradeItem.assignments.assignment_name}</span>
                                     {#if gradeItem.grade !== null}
                                         {@const gradeValue = gradeItem.grade}
-                                        {@const maxPointsForColor = gradeItem.assignments.max_points || 6} <!-- Use 6 as reference if max_points is null -->
+                                        <!-- {@const maxPointsForColor = gradeItem.assignments.max_points || 6}  Removed as max_points might not be consistently available or used for this color logic -->
                                         <span class="px-3 py-1 text-sm font-semibold rounded-full
                                             {gradeValue >= 5 ? 'bg-green-100 text-green-800' :
                                             gradeValue >= 4 ? 'bg-yellow-100 text-yellow-800' :
@@ -616,13 +675,13 @@
                                     Due: {formatDate(gradeItem.assignments.due_date, true)} |
                                     Weight: {gradeItem.assignments.weight !== null ? `${(gradeItem.assignments.weight * 100).toFixed(0)}%` : 'N/A'}
                                 </p>
+                                {#if gradeItem.submission_date}
+                                    <p class="text-xs text-gray-500 mt-1">Submitted: {formatDate(gradeItem.submission_date, true)}</p>
+                                {/if}
                                 {#if gradeItem.feedback}
                                     <p class="text-sm text-gray-600 mt-2 pt-2 border-t border-gray-200">
                                         <strong class="font-medium">Feedback:</strong> {gradeItem.feedback}
                                     </p>
-                                {/if}
-                                {#if gradeItem.submission_date}
-                                    <p class="text-xs text-gray-500 mt-1">Submitted: {formatDate(gradeItem.submission_date, true)}</p>
                                 {/if}
                             </li>
                         {/each}

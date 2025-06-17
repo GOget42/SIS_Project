@@ -1,130 +1,181 @@
-// src/routes/private/students/[id]/+page.server.ts
-import { redirect, fail } from '@sveltejs/kit';
-import { getStudentById } from '$lib/api/students.js';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { deleteAuthUser } from '$lib/api/auth.ts';
+import type { StaffCourseAssignment, CourseInfo, Assignment as StaffPageAssignment } from './$types'; // Stellen Sie sicher, dass diese Typen in $types definiert sind oder passen Sie sie an
 
-export const load: PageServerLoad = async ({ params, locals }) => {
-	if (!locals.session) {
-		throw redirect(302, '/login');
+export const load: PageServerLoad = async ({ locals: { supabase, getSession }, params }) => {
+	const session = await getSession();
+	if (!session) {
+		throw redirect(303, '/auth/login');
 	}
 
-	const student = await getStudentById(params.id);
-	let availableCourses: any[] = [];
-	let enrolledCoursesData: any[] = [];
+	const { data: instructor, error: instructorError } = await supabase
+		.from('instructors')
+		.select(
+			`
+            instructor_id,
+            first_name,
+            last_name,
+            email,
+            user_id,
+            created_at
+            `
+		)
+		.eq('instructor_id', params.id)
+		.single();
 
-	if (student) {
-		const { data: allCoursesData, error: coursesError } = await locals.supabase
-			.from('courses')
-			.select('course_id, course_name');
-
-		if (coursesError) {
-			console.error('Error loading courses:', coursesError.message);
-		}
-
-		const { data: currentEnrollments, error: enrollmentsError } = await locals.supabase
-			.from('enrollments')
-			.select('course_id')
-			.eq('student_id', student.student_id);
-
-		if (enrollmentsError) {
-			console.error('Error loading enrollments for available courses:', enrollmentsError.message);
-		}
-
-		if (allCoursesData) {
-			const enrolledCourseIds = new Set(currentEnrollments?.map(e => e.course_id) || []);
-			availableCourses = allCoursesData.filter(course => !enrolledCourseIds.has(course.course_id));
-		}
-
-		const { data: detailedEnrollments, error: detailedEnrollmentsError } = await locals.supabase
-			.from('enrollments')
-			.select(`
-                enrollment_id,
-                courses ( course_id, course_name, ects ),
-                assignments ( assignment_id, assignment_name, grade, weight, due_date )
-            `)
-			.eq('student_id', student.student_id);
-
-		if (detailedEnrollmentsError) {
-			console.error('Error loading detailed enrolled courses:', detailedEnrollmentsError.message);
-		} else if (detailedEnrollments) {
-			enrolledCoursesData = detailedEnrollments.map(e => ({
-				enrollment_id: e.enrollment_id,
-				course_id: e.courses?.course_id,
-				course_name: e.courses?.course_name,
-				ects: e.courses?.ects,
-				assignments: e.assignments || []
-			}));
-		}
-
-	} else {
-		console.warn(`Student with id ${params.id} not found.`);
+	if (instructorError || !instructor) {
+		// Im Fehlerfall oder wenn kein Dozent gefunden wurde, leere Arrays zurückgeben,
+		// damit die Seite nicht bricht und eine "Nicht gefunden"-Nachricht anzeigen kann.
+		return { staffMember: null, assignedCourses: [], availableTasks: [] };
 	}
+
+	// Kurse abrufen, für die der Dozent zuständig ist, inklusive deren Assignments
+	const { data: coursesData, error: coursesError } = await supabase
+		.from('courses')
+		.select(`
+            course_id,
+            course_name,
+            assignments (
+              assignment_id,
+              assignment_name,
+              due_date,
+              weight
+            )
+        `)
+		.eq('instructor_id', instructor.instructor_id);
+
+	let formattedAssignedCourses: StaffCourseAssignment[] = [];
+	if (coursesError) {
+		console.error('Error fetching courses for staff member:', coursesError);
+	} else if (coursesData) {
+		// Erstelle ein Array von Promises, um die Studentenzahlen für jeden Kurs parallel abzurufen
+		const coursePromises = coursesData.map(async (course) => {
+			const { count: studentCount, error: countError } = await supabase
+				.from('enrollments')
+				.select('*', { count: 'exact', head: true })
+				.eq('course_id', course.course_id);
+
+			if (countError) {
+				console.error(`Error fetching student count for course ${course.course_id}:`, countError.message);
+				// Setze student_count auf 0 oder einen anderen Standardwert im Fehlerfall
+			}
+
+			return {
+				assignment_id: course.course_id, // course_id als eindeutige ID für die #each-Schleife in Svelte
+				course: {
+					course_id: course.course_id,
+					course_name: course.course_name,
+					student_count: studentCount === null ? 0 : studentCount, // Studentenzahl hinzufügen
+				} as CourseInfo,
+				assignments: (course.assignments || []).map(asm => ({
+					assignment_id: asm.assignment_id,
+					assignment_name: asm.assignment_name,
+					due_date: asm.due_date,
+					weight: asm.weight,
+				})) as StaffPageAssignment[],
+			};
+		});
+
+		// Warte auf alle Promises, um die formatierten Kursdaten zu erhalten
+		formattedAssignedCourses = await Promise.all(coursePromises);
+	}
+
+	const availableTasks: never[] = []; // Platzhalter, muss ggf. noch implementiert werden
 
 	return {
-		user: locals.user,
-		student,
-		availableCourses,
-		enrolledCourses: enrolledCoursesData
+		staffMember: instructor,
+		assignedCourses: formattedAssignedCourses,
+		availableTasks: availableTasks
 	};
 };
 
 export const actions: Actions = {
-	enrollStudent: async ({ request, locals, params }) => {
-		if (!locals.session) {
-			throw redirect(303, '/login');
+	updateStaffMember: async ({ request, locals: { supabase, getSession }, params }) => {
+		const session = await getSession();
+		if (!session) {
+			throw error(401, 'Unauthorized');
 		}
 
 		const formData = await request.formData();
-		const course_id = formData.get('course_id') as string;
-		const student_id = params.id;
+		const first_name = formData.get('first_name') as string;
+		const last_name = formData.get('last_name') as string;
+		const email = formData.get('email') as string;
 
-		if (!course_id) {
-			return fail(400, { error: 'Course ID is missing.' });
-		}
-		if (!student_id) {
-			return fail(400, { error: 'Student ID is missing.' });
+		if (!first_name || !last_name || !email) {
+			return fail(400, {
+				message: 'First name, last name, and email are required.',
+				first_name,
+				last_name,
+				email,
+				updateError: true
+			});
 		}
 
-		const { data: studentExists } = await locals.supabase
-			.from('students')
-			.select('student_id')
-			.eq('student_id', student_id)
+		const { error: updateError } = await supabase
+			.from('instructors')
+			.update({
+				first_name,
+				last_name,
+				email
+			})
+			.eq('instructor_id', params.id);
+
+		if (updateError) {
+			return fail(500, {
+				message: `Failed to update staff member information: ${updateError.message}`,
+				first_name,
+				last_name,
+				email,
+				updateError: true
+			});
+		}
+
+		return {
+			success: true,
+			message: 'Staff member information updated successfully.'
+		};
+	},
+	deleteStaffMember: async ({ locals: { supabase, getSession }, params }) => {
+		const session = await getSession();
+		if (!session) {
+			throw error(401, 'Unauthorized');
+		}
+
+		const { data: staffMember, error: fetchError } = await supabase
+			.from('instructors')
+			.select('user_id, instructor_id')
+			.eq('instructor_id', params.id)
 			.single();
 
-		if (!studentExists) {
-			return fail(404, { error: 'Student not found.' });
+		if (fetchError || !staffMember) {
+			return fail(404, { message: 'Staff member not found for deletion.' });
 		}
 
-		const { data: existingEnrollment, error: checkError } = await locals.supabase
-			.from('enrollments')
-			.select('enrollment_id')
-			.eq('student_id', student_id)
-			.eq('course_id', course_id)
-			.maybeSingle();
+		const authUserIdToDelete = staffMember.user_id;
 
-		if (checkError) {
-			console.error('Error checking existing enrollment:', checkError.message);
-			return fail(500, { error: 'Could not verify enrollment status.' });
+		const { error: deleteInstructorError } = await supabase
+			.from('instructors')
+			.delete()
+			.eq('instructor_id', params.id);
+
+		if (deleteInstructorError) {
+			return fail(500, { message: `Failed to delete staff member from database: ${deleteInstructorError.message}` });
 		}
 
-		if (existingEnrollment) {
-			return fail(409, { error: 'Student is already enrolled in this course.' });
+		if (authUserIdToDelete) {
+			try {
+				const authResponse = await deleteAuthUser(authUserIdToDelete);
+				if (authResponse && authResponse.error) {
+					throw authResponse.error; // Fehler weiterwerfen, um im Catch-Block behandelt zu werden
+				}
+				console.log(`Auth user ${authUserIdToDelete} deleted successfully.`);
+			} catch (authError: any) {
+				console.error('Failed to delete auth user:', authError.message);
+				// Hier könnten Sie entscheiden, ob Sie den Benutzer über den teilweisen Fehler informieren möchten
+				// oder ob der Redirect trotzdem erfolgen soll.
+			}
 		}
-
-		const { error: insertError } = await locals.supabase
-			.from('enrollments')
-			.insert({
-				student_id: student_id,
-				course_id: course_id,
-				enrollment_date: new Date().toISOString()
-				// 'grade' wird hier nicht mehr eingefügt
-			});
-
-		if (insertError) {
-			console.error('Error enrolling student:', insertError.message);
-			return fail(500, { error: `Failed to enroll student: ${insertError.message}` });
-		}
-
-		return { success: true, message: 'Student enrolled successfully.' };
+		throw redirect(303, '/private/staff');
 	}
 };

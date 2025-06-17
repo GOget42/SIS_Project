@@ -347,17 +347,6 @@
 </script>
 
 <div class="p-6 h-96 relative">
-	<!-- Overall GPA display -->
-	<p class="text-center font-semibold mt-1 text-md">
-		Overall ECTS-Weighted GPA:
-		{#if overallWeightedGPA !== null}
-			{overallWeightedGPA.toFixed(2)}
-		{:else if isLoading}
-			Calculating...
-		{:else}
-			N/A
-		{/if}
-	</p>
 	{#if showNoEnrollmentsHtmlMessage}
 		<div class="text-center py-2">
 			<p class="text-gray-600">
