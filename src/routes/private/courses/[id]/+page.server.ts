@@ -6,7 +6,10 @@ import { fail } from '@sveltejs/kit';
 
 // Type for course with instructor details
 type CourseWithInstructor = Tables<'courses'> & {
-	instructors: Pick<Tables<'instructors'>, 'instructor_id' | 'first_name' | 'last_name' | 'email' | 'user_id'> | null;
+	instructors: Pick<
+		Tables<'instructors'>,
+		'instructor_id' | 'first_name' | 'last_name' | 'email' | 'user_id'
+	> | null;
 };
 
 // Type for assignments belonging to a course
@@ -19,7 +22,10 @@ type EnrolledStudentItem = Tables<'enrollments'> & {
 
 // Type for student's own grades on assignments
 type StudentGradeItem = {
-	assignments: Pick<Tables<'assignments'>, 'assignment_id' | 'assignment_name' | 'due_date' | 'weight'>;
+	assignments: Pick<
+		Tables<'assignments'>,
+		'assignment_id' | 'assignment_name' | 'due_date' | 'weight'
+	>;
 	grade: number | null;
 	feedback: string | null;
 	student_grade_id: number;
@@ -41,7 +47,9 @@ export type PageDataType = {
 	enrolledStudents: EnrolledStudentItem[] | null;
 	studentEnrollmentDetails: StudentEnrollmentDetailsData | null;
 	allStudentGradesForCourse: Tables<'student_grades'>[] | null;
-	availableStudents: Pick<Tables<'students'>, 'student_id' | 'first_name' | 'last_name' | 'email'>[] | null;
+	availableStudents:
+		| Pick<Tables<'students'>, 'student_id' | 'first_name' | 'last_name' | 'email'>[]
+		| null;
 	error: { message: string } | null;
 };
 
@@ -69,21 +77,38 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 	const numericCourseId = parseInt(courseIdParam, 10);
 
 	if (isNaN(numericCourseId)) {
-		return { ...initialReturnState, user, role: 'unknown', error: { message: `Invalid course ID format. The ID "${courseIdParam}" is not a number.` } };
+		return {
+			...initialReturnState,
+			user,
+			role: 'unknown',
+			error: { message: `Invalid course ID format. The ID "${courseIdParam}" is not a number.` }
+		};
 	}
 
 	let determinedRole: PageDataType['role'] = 'unknown';
 	let studentIdForRole: number | null = null;
 
-	const { data: adminInfo } = await supabase.from('admins').select('admin_id').eq('user_id', user.id).maybeSingle();
+	const { data: adminInfo } = await supabase
+		.from('admins')
+		.select('admin_id')
+		.eq('user_id', user.id)
+		.maybeSingle();
 	if (adminInfo) {
 		determinedRole = 'admin';
 	} else {
-		const { data: instructorInfo } = await supabase.from('instructors').select('instructor_id, user_id').eq('user_id', user.id).maybeSingle();
+		const { data: instructorInfo } = await supabase
+			.from('instructors')
+			.select('instructor_id, user_id')
+			.eq('user_id', user.id)
+			.maybeSingle();
 		if (instructorInfo) {
 			determinedRole = 'instructor';
 		} else {
-			const { data: studentInfo } = await supabase.from('students').select('student_id').eq('user_id', user.id).maybeSingle();
+			const { data: studentInfo } = await supabase
+				.from('students')
+				.select('student_id')
+				.eq('user_id', user.id)
+				.maybeSingle();
 			if (studentInfo) {
 				determinedRole = 'student';
 				studentIdForRole = studentInfo.student_id;
@@ -91,7 +116,6 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 		}
 	}
 	initialReturnState.role = determinedRole;
-
 
 	const { data: courseData, error: courseError } = await supabase
 		.from('courses')
@@ -102,10 +126,20 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 
 	if (courseError) {
 		console.error(`Database error fetching course ${numericCourseId}:`, courseError);
-		return { ...initialReturnState, user, role: determinedRole, error: { message: 'An error occurred while fetching course details.' } };
+		return {
+			...initialReturnState,
+			user,
+			role: determinedRole,
+			error: { message: 'An error occurred while fetching course details.' }
+		};
 	}
 	if (!courseData) {
-		return { ...initialReturnState, user, role: determinedRole, error: { message: `Course with ID ${numericCourseId} not found.` } };
+		return {
+			...initialReturnState,
+			user,
+			role: determinedRole,
+			error: { message: `Course with ID ${numericCourseId} not found.` }
+		};
 	}
 	initialReturnState.course = courseData;
 
@@ -113,54 +147,84 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 		.from('assignments')
 		.select('*')
 		.eq('course_id', numericCourseId);
-	if (assignmentsError) console.error(`Error fetching assignments for course ${numericCourseId}:`, assignmentsError);
+	if (assignmentsError)
+		console.error(`Error fetching assignments for course ${numericCourseId}:`, assignmentsError);
 	initialReturnState.assignments = courseAssignmentsData || [];
 
-	if (determinedRole === 'admin' || (determinedRole === 'instructor' && courseData.instructors?.user_id === user.id)) {
+	if (
+		determinedRole === 'admin' ||
+		(determinedRole === 'instructor' && courseData.instructors?.user_id === user.id)
+	) {
 		const { data: enrollments, error: enrollmentsError } = await supabase
 			.from('enrollments')
 			.select(`*, students (student_id, first_name, last_name, email)`)
 			.eq('course_id', numericCourseId)
 			.returns<EnrolledStudentItem[]>();
-		if (enrollmentsError) console.error(`Error fetching enrollments for course ${numericCourseId}:`, enrollmentsError);
+		if (enrollmentsError)
+			console.error(`Error fetching enrollments for course ${numericCourseId}:`, enrollmentsError);
 		else initialReturnState.enrolledStudents = enrollments || [];
 	}
-
 
 	if (determinedRole === 'student' && studentIdForRole) {
 		const { data: studentEnrollment, error: studentEnrollmentError } = await supabase
 			.from('enrollments')
-			.select(`
+			.select(
+				`
                 *,
                 students (student_id, first_name, last_name, email)
-            `)
+            `
+			)
 			.eq('course_id', numericCourseId)
 			.eq('student_id', studentIdForRole)
-			.returns<Tables<'enrollments'> & { students: Pick<Tables<'students'>, 'student_id' | 'first_name' | 'last_name' | 'email'> | null }>()
+			.returns<
+				Tables<'enrollments'> & {
+					students: Pick<
+						Tables<'students'>,
+						'student_id' | 'first_name' | 'last_name' | 'email'
+					> | null;
+				}
+			>()
 			.maybeSingle();
 
 		if (studentEnrollmentError) {
-			console.error(`Error fetching student enrollment for student ${studentIdForRole}, course ${numericCourseId}:`, studentEnrollmentError);
+			console.error(
+				`Error fetching student enrollment for student ${studentIdForRole}, course ${numericCourseId}:`,
+				studentEnrollmentError
+			);
 		} else if (studentEnrollment) {
 			const { data: grades, error: gradesError } = await supabase
 				.from('student_grades')
-				.select(`
+				.select(
+					`
                     *,
                     assignments (assignment_id, assignment_name, due_date, weight)
-                `)
+                `
+				)
 				.eq('enrollment_id', studentEnrollment.enrollment_id);
 
 			let formattedGrades: StudentGradeItem[] = [];
 			if (gradesError) {
-				console.error(`Error fetching student grades for enrollment ${studentEnrollment.enrollment_id}:`, gradesError);
+				console.error(
+					`Error fetching student grades for enrollment ${studentEnrollment.enrollment_id}:`,
+					gradesError
+				);
 			} else if (grades) {
-				formattedGrades = grades.map(g => ({
-					assignments: g.assignments || { assignment_id: 'unknown-id', assignment_name: 'Unknown Assignment', due_date: null, weight: null }, // Provide all fields for Pick
-					grade: g.grade,
-					feedback: g.feedback,
-					student_grade_id: g.student_grade_id,
-					submission_date: g.submission_date
-				})).filter(g => g.assignments && g.assignments.assignment_id !== 'unknown-id') as StudentGradeItem[];
+				formattedGrades = grades
+					.map((g) => ({
+						assignments: g.assignments || {
+							assignment_id: 'unknown-id',
+							assignment_name: 'Unknown Assignment',
+							due_date: null,
+							weight: null
+						}, // Provide all fields for Pick
+						grade: g.grade,
+						feedback: g.feedback,
+						student_grade_id: g.student_grade_id,
+						submission_date: g.submission_date
+					}))
+					.filter(
+						(g) => g.assignments && g.assignments.assignment_id !== 'unknown-id'
+					) as StudentGradeItem[];
 			}
 			initialReturnState.studentEnrollmentDetails = {
 				...studentEnrollment,
@@ -170,8 +234,14 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 		}
 	}
 
-	if ((determinedRole === 'admin' || (determinedRole === 'instructor' && courseData.instructors?.user_id === user.id)) && initialReturnState.enrolledStudents) {
-		const enrollmentIds = initialReturnState.enrolledStudents.map(e => e.enrollment_id).filter(id => id !== null) as number[];
+	if (
+		(determinedRole === 'admin' ||
+			(determinedRole === 'instructor' && courseData.instructors?.user_id === user.id)) &&
+		initialReturnState.enrolledStudents
+	) {
+		const enrollmentIds = initialReturnState.enrolledStudents
+			.map((e) => e.enrollment_id)
+			.filter((id) => id !== null) as number[];
 		if (enrollmentIds.length > 0) {
 			const { data: courseGrades, error: courseGradesError } = await supabase
 				.from('student_grades')
@@ -187,7 +257,10 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 		}
 	}
 
-	if (determinedRole === 'admin' || (determinedRole === 'instructor' && courseData.instructors?.user_id === user.id)) {
+	if (
+		determinedRole === 'admin' ||
+		(determinedRole === 'instructor' && courseData.instructors?.user_id === user.id)
+	) {
 		const { data: allStudents, error: allStudentsError } = await supabase
 			.from('students')
 			.select('student_id, first_name, last_name, email');
@@ -197,9 +270,13 @@ export const load: PageServerLoad = async ({ params, locals }): Promise<PageData
 		} else if (allStudents) {
 			if (initialReturnState.enrolledStudents && initialReturnState.enrolledStudents.length > 0) {
 				const enrolledStudentIds = new Set(
-					initialReturnState.enrolledStudents.map(es => es.students?.student_id).filter(id => id !== undefined) as number[]
+					initialReturnState.enrolledStudents
+						.map((es) => es.students?.student_id)
+						.filter((id) => id !== undefined) as number[]
 				);
-				initialReturnState.availableStudents = allStudents.filter(s => !enrolledStudentIds.has(s.student_id));
+				initialReturnState.availableStudents = allStudents.filter(
+					(s) => !enrolledStudentIds.has(s.student_id)
+				);
 			} else {
 				initialReturnState.availableStudents = allStudents;
 			}
@@ -229,9 +306,14 @@ export const actions: Actions = {
 		const ects = parseInt(ects_string, 10);
 		const hours = parseInt(hours_string, 10);
 
-
 		if (!course_name || isNaN(ects) || !format || isNaN(hours)) {
-			return fail(400, { message: 'All fields must be filled correctly.', course_name, ects: ects_string, format, hours: hours_string });
+			return fail(400, {
+				message: 'All fields must be filled correctly.',
+				course_name,
+				ects: ects_string,
+				format,
+				hours: hours_string
+			});
 		}
 
 		const { error } = await supabase
@@ -262,23 +344,35 @@ export const actions: Actions = {
 		const weight_str = formData.get('weight') as string;
 
 		if (!assignment_name || !due_date_str || !weight_str) {
-			return fail(400, { message: 'Assignment name, due date, and weight are required.', assignment_name, due_date: due_date_str, weight: weight_str });
+			return fail(400, {
+				message: 'Assignment name, due date, and weight are required.',
+				assignment_name,
+				due_date: due_date_str,
+				weight: weight_str
+			});
 		}
 
 		const weightPercentage = parseInt(weight_str, 10);
 
 		if (isNaN(weightPercentage) || weightPercentage < 0 || weightPercentage > 100) {
-			return fail(400, { message: 'Weight must be an integer between 0 and 100.', assignment_name, due_date: due_date_str, weight: weight_str });
+			return fail(400, {
+				message: 'Weight must be an integer between 0 and 100.',
+				assignment_name,
+				due_date: due_date_str,
+				weight: weight_str
+			});
 		}
 
 		const weightForDb = weightPercentage / 100;
-		const formattedDueDate = due_date_str ? new Date(due_date_str).toISOString().split('T')[0] : null;
+		const formattedDueDate = due_date_str
+			? new Date(due_date_str).toISOString().split('T')[0]
+			: null;
 
 		const newAssignment: TablesInsert<'assignments'> = {
 			course_id: courseId,
 			assignment_name,
 			due_date: formattedDueDate,
-			weight: weightForDb,
+			weight: weightForDb
 		};
 
 		const { error } = await supabase.from('assignments').insert(newAssignment);
@@ -303,22 +397,36 @@ export const actions: Actions = {
 		const weight_str = formData.get('weight') as string;
 
 		if (!assignment_id || !assignment_name || !due_date_str || !weight_str) {
-			return fail(400, { message: 'Assignment name, due date, and weight are required.', assignment_name, due_date: due_date_str, weight: weight_str, updatedAssignmentId: assignment_id });
+			return fail(400, {
+				message: 'Assignment name, due date, and weight are required.',
+				assignment_name,
+				due_date: due_date_str,
+				weight: weight_str,
+				updatedAssignmentId: assignment_id
+			});
 		}
 
 		const weightPercentage = parseInt(weight_str, 10);
 
 		if (isNaN(weightPercentage) || weightPercentage < 0 || weightPercentage > 100) {
-			return fail(400, { message: 'Weight must be an integer between 0 and 100.', assignment_name, due_date: due_date_str, weight: weight_str, updatedAssignmentId: assignment_id });
+			return fail(400, {
+				message: 'Weight must be an integer between 0 and 100.',
+				assignment_name,
+				due_date: due_date_str,
+				weight: weight_str,
+				updatedAssignmentId: assignment_id
+			});
 		}
 
 		const weightForDb = weightPercentage / 100;
-		const formattedDueDate = due_date_str ? new Date(due_date_str).toISOString().split('T')[0] : null;
+		const formattedDueDate = due_date_str
+			? new Date(due_date_str).toISOString().split('T')[0]
+			: null;
 
 		const updatedAssignmentData: Partial<Tables<'assignments'>> = {
 			assignment_name,
 			due_date: formattedDueDate,
-			weight: weightForDb,
+			weight: weightForDb
 		};
 
 		const { error: assignmentUpdateError } = await supabase
@@ -328,7 +436,10 @@ export const actions: Actions = {
 
 		if (assignmentUpdateError) {
 			console.error('Error updating assignment:', assignmentUpdateError);
-			return fail(500, { message: `Error updating assignment: ${assignmentUpdateError.message}`, updatedAssignmentId: assignment_id });
+			return fail(500, {
+				message: `Error updating assignment: ${assignmentUpdateError.message}`,
+				updatedAssignmentId: assignment_id
+			});
 		}
 
 		const studentGradesCountStr = formData.get('student_grades_count') as string;
@@ -353,17 +464,23 @@ export const actions: Actions = {
 
 				if (grade !== null) {
 					if (isNaN(grade) || grade < 1.0 || grade > 6.0) {
-						return fail(400, { message: `Grade for student must be a number between 1.0 and 6.0. Received: ${grade_str}`, updatedAssignmentId: assignment_id });
+						return fail(400, {
+							message: `Grade for student must be a number between 1.0 and 6.0. Received: ${grade_str}`,
+							updatedAssignmentId: assignment_id
+						});
 					}
-					if ( (grade * 100) % 25 !== 0 ) {
-						return fail(400, { message: `Grade must be in 0.25 increments (e.g., 1.0, 1.25, 1.5, ...). Received: ${grade_str}`, updatedAssignmentId: assignment_id });
+					if ((grade * 100) % 25 !== 0) {
+						return fail(400, {
+							message: `Grade must be in 0.25 increments (e.g., 1.0, 1.25, 1.5, ...). Received: ${grade_str}`,
+							updatedAssignmentId: assignment_id
+						});
 					}
 				}
 
 				const studentGradeEntry: TablesInsert<'student_grades'> = {
 					enrollment_id: enrollment_id,
 					assignment_id: assignment_id, // assignment_id is UUID string, ensure it's correctly passed
-					grade: grade,
+					grade: grade
 				};
 				gradeUpsertOperations.push(studentGradeEntry);
 			}
@@ -375,12 +492,19 @@ export const actions: Actions = {
 
 				if (gradeUpsertError) {
 					console.error('Error upserting student grades:', gradeUpsertError);
-					return fail(500, { message: `Error saving grades: ${gradeUpsertError.message}`, updatedAssignmentId: assignment_id });
+					return fail(500, {
+						message: `Error saving grades: ${gradeUpsertError.message}`,
+						updatedAssignmentId: assignment_id
+					});
 				}
 			}
 		}
 
-		return { success: true, message: 'Assignment and grades successfully updated.', updatedAssignmentId: assignment_id };
+		return {
+			success: true,
+			message: 'Assignment and grades successfully updated.',
+			updatedAssignmentId: assignment_id
+		};
 	},
 
 	deleteAssignment: async ({ request, locals }) => {
@@ -415,7 +539,11 @@ export const actions: Actions = {
 			console.error('Error deleting assignment:', error);
 			return fail(500, { message: `Error deleting assignment: ${error.message}` });
 		}
-		return { success: true, message: 'Assignment successfully deleted.', action: '?/deleteAssignment' };
+		return {
+			success: true,
+			message: 'Assignment successfully deleted.',
+			action: '?/deleteAssignment'
+		};
 	},
 
 	addStudent: async ({ request, params, locals }) => {
@@ -459,18 +587,26 @@ export const actions: Actions = {
 		}
 
 		if (!authorized) {
-			return fail(403, { addStudentError: 'Forbidden: You do not have permission to add students to this course.' });
+			return fail(403, {
+				addStudentError: 'Forbidden: You do not have permission to add students to this course.'
+			});
 		}
 
 		const formData = await request.formData();
 		const student_id_str = formData.get('student_id') as string;
 
 		if (!student_id_str) {
-			return fail(400, { addStudentError: 'Student ID is required.', student_id_form: student_id_str });
+			return fail(400, {
+				addStudentError: 'Student ID is required.',
+				student_id_form: student_id_str
+			});
 		}
 		const student_id = parseInt(student_id_str, 10);
 		if (isNaN(student_id)) {
-			return fail(400, { addStudentError: 'Invalid Student ID format.', student_id_form: student_id_str });
+			return fail(400, {
+				addStudentError: 'Invalid Student ID format.',
+				student_id_form: student_id_str
+			});
 		}
 
 		const { data: studentExists, error: studentCheckError } = await supabase
@@ -481,7 +617,9 @@ export const actions: Actions = {
 
 		if (studentCheckError) {
 			console.error('Error checking student existence:', studentCheckError);
-			return fail(500, { addStudentError: 'Error verifying student: ' + studentCheckError.message });
+			return fail(500, {
+				addStudentError: 'Error verifying student: ' + studentCheckError.message
+			});
 		}
 		if (!studentExists) {
 			return fail(404, { addStudentError: 'Student not found.', student_id_form: student_id_str });
@@ -500,7 +638,10 @@ export const actions: Actions = {
 		}
 
 		if (existingEnrollment) {
-			return fail(409, { addStudentError: 'Student is already enrolled in this course.', student_id_form: student_id_str });
+			return fail(409, {
+				addStudentError: 'Student is already enrolled in this course.',
+				student_id_form: student_id_str
+			});
 		}
 
 		const newEnrollment: TablesInsert<'enrollments'> = {
@@ -516,7 +657,11 @@ export const actions: Actions = {
 			return fail(500, { addStudentError: `Error enrolling student: ${insertError.message}` });
 		}
 
-		return { success: true, addStudentSuccess: 'Student successfully enrolled.', action: '?/addStudent' };
+		return {
+			success: true,
+			addStudentSuccess: 'Student successfully enrolled.',
+			action: '?/addStudent'
+		};
 	},
 
 	markCourseFinished: async ({ params, locals }) => {
@@ -560,7 +705,9 @@ export const actions: Actions = {
 		}
 
 		if (!authorized) {
-			return fail(403, { markFinishedError: 'Forbidden: You do not have permission to modify this course.' });
+			return fail(403, {
+				markFinishedError: 'Forbidden: You do not have permission to modify this course.'
+			});
 		}
 
 		const { error: updateError } = await supabase
@@ -573,6 +720,10 @@ export const actions: Actions = {
 			return fail(500, { markFinishedError: `Error updating course: ${updateError.message}` });
 		}
 
-		return { success: true, markFinishedSuccess: 'Course marked as finished.', actionResult: 'markCourseFinished' };
+		return {
+			success: true,
+			markFinishedSuccess: 'Course marked as finished.',
+			actionResult: 'markCourseFinished'
+		};
 	}
 };

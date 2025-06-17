@@ -16,7 +16,7 @@ export async function createEnrollment(enrollment: NewEnrollment): Promise<Enrol
 	return data;
 }
 
-export async function deleteEnrollment(id: string): Promise<void> {
+export async function deleteEnrollment(id: number): Promise<void> {
 	const { error } = await supabase.from('enrollments').delete().eq('enrollment_id', id);
 	if (error) throw error;
 }

@@ -20,7 +20,7 @@ export async function getAllAdmins(): Promise<Admin[]> {
 }
 
 // `id` should be either an instructor_id or an admin_id
-export async function getStaffById(id: string): Promise<(Admin | Instructor) & { role: string }> {
+export async function getStaffById(id: number): Promise<(Admin | Instructor) & { role: string }> {
 	const { data: instructor, error: instructorError } = await supabase
 		.from('instructors')
 		.select('*')
@@ -45,7 +45,7 @@ export async function getStaffById(id: string): Promise<(Admin | Instructor) & {
 }
 
 export async function updateStaff(
-	id: string, // admin_id or instructor_id
+	id: number, // admin_id or instructor_id
 	updates: Partial<InstructorUpdate | AdminUpdate>,
 	role: 'admin' | 'instructor'
 ): Promise<Admin[] | Instructor[]> {
@@ -56,7 +56,7 @@ export async function updateStaff(
 	return data;
 }
 
-export async function deleteStaff(id: string, role: 'admin' | 'instructor'): Promise<void> {
+export async function deleteStaff(id: number, role: 'admin' | 'instructor'): Promise<void> {
 	const table = role === 'admin' ? 'admins' : 'instructors';
 	const idColumn = role === 'admin' ? 'admin_id' : 'instructor_id';
 	const { error } = await supabase.from(table).delete().eq(idColumn, id);

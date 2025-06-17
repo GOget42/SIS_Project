@@ -46,15 +46,15 @@
 			if (!gradesData) throw new Error('No grade data found.');
 
 			// 4. Process data
-			const statistics: CourseStatistic[] = courses.map(course => {
-				const courseEnrollments = enrollments.filter(e => e.course_id === course.course_id);
-				const studentIds = new Set(courseEnrollments.map(e => e.student_id));
+			const statistics: CourseStatistic[] = courses.map((course) => {
+				const courseEnrollments = enrollments.filter((e) => e.course_id === course.course_id);
+				const studentIds = new Set(courseEnrollments.map((e) => e.student_id));
 				const studentCount = studentIds.size;
-				const enrollmentIdsForCourse = courseEnrollments.map(e => e.enrollment_id);
+				const enrollmentIdsForCourse = courseEnrollments.map((e) => e.enrollment_id);
 
 				const courseGrades = gradesData
-					.filter(g => enrollmentIdsForCourse.includes(g.enrollment_id) && g.grade !== null)
-					.map(g => g.grade as number);
+					.filter((g) => enrollmentIdsForCourse.includes(g.enrollment_id) && g.grade !== null)
+					.map((g) => g.grade as number);
 
 				let averageGpa: number | null = null;
 				if (courseGrades.length > 0) {
@@ -67,7 +67,7 @@
 					name: course.course_name,
 					studentCount,
 					averageGpa,
-					ects: course.ects,
+					ects: course.ects
 				};
 			});
 
@@ -77,7 +77,12 @@
 			let specificMessage = 'An unknown error occurred while fetching data.';
 			if (error instanceof Error) {
 				specificMessage = error.message;
-			} else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+			} else if (
+				error &&
+				typeof error === 'object' &&
+				'message' in error &&
+				typeof error.message === 'string'
+			) {
 				specificMessage = error.message;
 			}
 			errorMessage = specificMessage;
@@ -126,12 +131,15 @@
 </script>
 
 <div class="container mx-auto p-4">
-	<h1 class="text-2xl font-bold mb-4">Course Overview</h1>
+	<h1 class="mb-4 text-2xl font-bold">Course Overview</h1>
 
 	{#if isLoading}
 		<p class="text-center text-gray-500">Loading course data...</p>
 	{:else if errorMessage}
-		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+		<div
+			class="relative rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
+			role="alert"
+		>
 			<strong class="font-bold">Error!</strong>
 			<span class="block sm:inline">{errorMessage}</span>
 		</div>
@@ -141,38 +149,54 @@
 		<div class="overflow-x-auto shadow-md sm:rounded-lg">
 			<table class="min-w-full divide-y divide-gray-200">
 				<thead class="bg-gray-50">
-				<tr>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('name')}>
-						Course {getSortIndicator('name')}
-					</th>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('studentCount')}>
-						Students {getSortIndicator('studentCount')}
-					</th>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('averageGpa')}>
-						AVERAGE GPA {getSortIndicator('averageGpa')}
-					</th>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('ects')}>
-						ECTS {getSortIndicator('ects')}
-					</th>
-				</tr>
-				</thead>
-				<tbody class="bg-white divide-y divide-gray-200">
-				{#each sortedCourseStatistics as stat (stat.id)}
 					<tr>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<div class="text-sm font-medium text-gray-900">{stat.name}</div>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{stat.studentCount}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{stat.averageGpa !== null ? stat.averageGpa.toFixed(1) : 'N/A'}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{stat.ects}
-						</td>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('name')}
+						>
+							Course {getSortIndicator('name')}
+						</th>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('studentCount')}
+						>
+							Students {getSortIndicator('studentCount')}
+						</th>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('averageGpa')}
+						>
+							AVERAGE GPA {getSortIndicator('averageGpa')}
+						</th>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('ects')}
+						>
+							ECTS {getSortIndicator('ects')}
+						</th>
 					</tr>
-				{/each}
+				</thead>
+				<tbody class="divide-y divide-gray-200 bg-white">
+					{#each sortedCourseStatistics as stat (stat.id)}
+						<tr>
+							<td class="px-6 py-4 whitespace-nowrap">
+								<div class="text-sm font-medium text-gray-900">{stat.name}</div>
+							</td>
+							<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+								{stat.studentCount}
+							</td>
+							<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+								{stat.averageGpa !== null ? stat.averageGpa.toFixed(1) : 'N/A'}
+							</td>
+							<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+								{stat.ects}
+							</td>
+						</tr>
+					{/each}
 				</tbody>
 			</table>
 		</div>
@@ -180,10 +204,10 @@
 </div>
 
 <style>
-    .container {
-        max-width: 1200px;
-    }
-    .cursor-pointer {
-        cursor: pointer;
-    }
+	.container {
+		max-width: 1200px;
+	}
+	.cursor-pointer {
+		cursor: pointer;
+	}
 </style>

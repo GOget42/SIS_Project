@@ -42,7 +42,7 @@ interface AdminCourseSummary {
 	course_id: number;
 	course_name: string;
 	format: string; // In DB non-nullable
-	ects: number;   // In DB non-nullable
+	ects: number; // In DB non-nullable
 	student_count: number;
 	average_grade: number | null;
 	instructor_name?: string | null; // Optional: Name des Dozenten
@@ -54,7 +54,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const user = locals.user;
-	let profile: Tables<'students'> | Tables<'instructors'> | Tables<'admins'> | { first_name?: string | null, email?: string | null } | null = null;
+	let profile:
+		| Tables<'students'>
+		| Tables<'instructors'>
+		| Tables<'admins'>
+		| { first_name?: string | null; email?: string | null }
+		| null = null;
 	let role: string = user.user_metadata?.role || '';
 
 	let coursesData: CourseDataForStudent[] | InstructorCourseSummary[] | AdminCourseSummary[] = [];
@@ -83,11 +88,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 							.from('assignments')
 							.select('assignment_id, assignment_name, due_date, weight, grade')
 							.eq('enrollment_id', enrollment.enrollment_id);
-						const typedAssignments: AssignmentData[] = (courseAssignmentsData || []).map(a => ({ ...a }));
+						const typedAssignments: AssignmentData[] = (courseAssignmentsData || []).map((a) => ({
+							...a
+						}));
 						return { ...courseBase, assignments: typedAssignments };
 					});
 					const resolvedCourses = await Promise.all(coursePromises);
-					coursesData = resolvedCourses.filter(course => course !== null) as CourseDataForStudent[];
+					coursesData = resolvedCourses.filter(
+						(course) => course !== null
+					) as CourseDataForStudent[];
 				}
 			}
 		} else if (role === 'instructor') {
@@ -107,7 +116,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 				const teachingCourses = teachingCoursesRaw || [];
 				const instructorCourseSummaries: InstructorCourseSummary[] = [];
-				let collectedRawAssignmentsForInstructor: { assignment_id: string, name: string, dueDate: string, courseId: number, courseName: string, enrollment_id: number }[] = [];
+				let collectedRawAssignmentsForInstructor: {
+					assignment_id: string;
+					name: string;
+					dueDate: string;
+					courseId: number;
+					courseName: string;
+					enrollment_id: number;
+				}[] = [];
 				const today = new Date();
 				today.setHours(0, 0, 0, 0);
 
@@ -125,17 +141,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 					if (enrollments && enrollments.length > 0) {
 						for (const enrollment of enrollments) {
-							const { data: studentAssignments, error: studentAssignmentsError } = await locals.supabase
-								.from('assignments')
-								.select('assignment_id, assignment_name, grade, weight, due_date')
-								.eq('enrollment_id', enrollment.enrollment_id);
+							const { data: studentAssignments, error: studentAssignmentsError } =
+								await locals.supabase
+									.from('assignments')
+									.select('assignment_id, assignment_name, grade, weight, due_date')
+									.eq('enrollment_id', enrollment.enrollment_id);
 							if (studentAssignmentsError) continue;
 
 							let totalWeightedGrade = 0;
 							let totalWeight = 0;
 							let hasGradedAssignments = false;
 							if (studentAssignments) {
-								studentAssignments.forEach(sa => {
+								studentAssignments.forEach((sa) => {
 									if (sa.grade !== null && sa.weight !== null && sa.weight > 0) {
 										totalWeightedGrade += sa.grade * sa.weight;
 										totalWeight += sa.weight;
@@ -151,7 +168,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 												dueDate: sa.due_date,
 												courseId: course.course_id,
 												courseName: course.course_name,
-                                                                               enrollment_id: enrollment.enrollment_id // Not used directly for the unique key, but kept for context
+												enrollment_id: enrollment.enrollment_id // Not used directly for the unique key, but kept for context
 											});
 										}
 									}
@@ -164,14 +181,22 @@ export const load: PageServerLoad = async ({ locals }) => {
 					}
 					let average_course_grade: number | null = null;
 					if (studentCourseGrades.length > 0) {
-						average_course_grade = parseFloat((studentCourseGrades.reduce((s, g) => s + g, 0) / studentCourseGrades.length).toFixed(2));
+						average_course_grade = parseFloat(
+							(studentCourseGrades.reduce((s, g) => s + g, 0) / studentCourseGrades.length).toFixed(
+								2
+							)
+						);
 					}
-					instructorCourseSummaries.push({ ...course, student_count, average_grade: average_course_grade });
+					instructorCourseSummaries.push({
+						...course,
+						student_count,
+						average_grade: average_course_grade
+					});
 				}
 				coursesData = instructorCourseSummaries;
 
 				const uniqueAssignmentsMap = new Map<string, InstructorUpcomingAssignment>();
-				collectedRawAssignmentsForInstructor.forEach(rawAsn => {
+				collectedRawAssignmentsForInstructor.forEach((rawAsn) => {
 					// Unique key per assignment definition (name, due date, course), not per student assignment
 					const key = `${rawAsn.courseId}-${rawAsn.name}-${rawAsn.dueDate}`;
 					if (!uniqueAssignmentsMap.has(key)) {
@@ -180,12 +205,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 							assignment_name: rawAsn.name,
 							due_date: rawAsn.dueDate,
 							course_id: rawAsn.courseId,
-							course_name: rawAsn.courseName,
+							course_name: rawAsn.courseName
 						});
 					}
 				});
-				upcomingInstructorAssignments = Array.from(uniqueAssignmentsMap.values())
-					.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+				upcomingInstructorAssignments = Array.from(uniqueAssignmentsMap.values()).sort(
+					(a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+				);
 			}
 		} else if (role === 'admin') {
 			const { data: adminData, error: adminError } = await locals.supabase
@@ -202,10 +228,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 				profile = { first_name: user.email?.split('@')[0] || 'Admin', email: user.email };
 			}
 
-                        // Load data for admins: system-wide course statistics
+			// Load data for admins: system-wide course statistics
 			const { data: allCoursesRaw, error: coursesError } = await locals.supabase
 				.from('courses')
-				.select('course_id, course_name, format, ects, instructor_id, instructors (first_name, last_name)'); // Dozenteninfo mitladen
+				.select(
+					'course_id, course_name, format, ects, instructor_id, instructors (first_name, last_name)'
+				); // Dozenteninfo mitladen
 
 			if (coursesError) throw coursesError;
 
@@ -219,12 +247,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 					.eq('course_id', course.course_id);
 
 				if (enrollmentsError) {
-					console.error(`Error fetching enrollments for course ${course.course_id}:`, enrollmentsError.message);
+					console.error(
+						`Error fetching enrollments for course ${course.course_id}:`,
+						enrollmentsError.message
+					);
 					adminCourseSummaries.push({
 						...(course as any), // Cast, da instructors verschachtelt ist
 						student_count: 0,
 						average_grade: null,
-						instructor_name: course.instructors ? `${course.instructors.first_name} ${course.instructors.last_name}` : 'N/A'
+						instructor_name: course.instructors
+							? `${course.instructors.first_name} ${course.instructors.last_name}`
+							: 'N/A'
 					});
 					continue;
 				}
@@ -234,10 +267,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 				if (enrollments && enrollments.length > 0) {
 					for (const enrollment of enrollments) {
-						const { data: studentAssignments, error: studentAssignmentsError } = await locals.supabase
-							.from('assignments')
-							.select('grade, weight')
-							.eq('enrollment_id', enrollment.enrollment_id);
+						const { data: studentAssignments, error: studentAssignmentsError } =
+							await locals.supabase
+								.from('assignments')
+								.select('grade, weight')
+								.eq('enrollment_id', enrollment.enrollment_id);
 
 						if (studentAssignmentsError) continue;
 
@@ -246,7 +280,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 						let hasGradedAssignments = false;
 
 						if (studentAssignments) {
-							studentAssignments.forEach(sa => {
+							studentAssignments.forEach((sa) => {
 								if (sa.grade !== null && sa.weight !== null && sa.weight > 0) {
 									totalWeightedGrade += sa.grade * sa.weight;
 									totalWeight += sa.weight;
@@ -272,7 +306,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 					ects: course.ects,
 					student_count,
 					average_grade: average_course_grade,
-					instructor_name: course.instructors ? `${course.instructors.first_name} ${course.instructors.last_name}`.trim() : 'N/A'
+					instructor_name: course.instructors
+						? `${course.instructors.first_name} ${course.instructors.last_name}`.trim()
+						: 'N/A'
 				});
 			}
 			coursesData = adminCourseSummaries;
@@ -285,7 +321,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		user: user,
 		profile: profile,
 		role: role,
-                courses: coursesData, // Now contains AdminCourseSummary[] for admins
-		upcomingInstructorAssignments: upcomingInstructorAssignments,
+		courses: coursesData, // Now contains AdminCourseSummary[] for admins
+		upcomingInstructorAssignments: upcomingInstructorAssignments
 	};
 };

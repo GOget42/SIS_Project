@@ -25,15 +25,15 @@
 	let showNoEnrollmentsHtmlMessage = false; // Flag for specific HTML message
 
 	// Helper function to generate distinct colors for chart bars
-	function getBarColors(count: number): { backgrounds: string[], borders: string[] } {
+	function getBarColors(count: number): { backgrounds: string[]; borders: string[] } {
 		const baseColors = [
 			{ bg: 'rgba(75, 192, 192, 0.7)', border: 'rgba(75, 192, 192, 1)' }, // Teal
-			{ bg: 'rgba(54, 162, 235, 0.7)', border: 'rgba(54, 162, 235, 1)' },  // Blue
+			{ bg: 'rgba(54, 162, 235, 0.7)', border: 'rgba(54, 162, 235, 1)' }, // Blue
 			{ bg: 'rgba(255, 206, 86, 0.7)', border: 'rgba(255, 206, 86, 1)' }, // Yellow
 			// Add more colors if needed
-			{ bg: 'rgba(255, 99, 132, 0.7)', border: 'rgba(255, 99, 132, 1)' },  // Red
-			{ bg: 'rgba(153, 102, 255, 0.7)', border: 'rgba(153, 102, 255, 1)' },// Purple
-			{ bg: 'rgba(255, 159, 64, 0.7)', border: 'rgba(255, 159, 64, 1)' }  // Orange
+			{ bg: 'rgba(255, 99, 132, 0.7)', border: 'rgba(255, 99, 132, 1)' }, // Red
+			{ bg: 'rgba(153, 102, 255, 0.7)', border: 'rgba(153, 102, 255, 1)' }, // Purple
+			{ bg: 'rgba(255, 159, 64, 0.7)', border: 'rgba(255, 159, 64, 1)' } // Orange
 		];
 		const backgrounds: string[] = [];
 		const borders: string[] = [];
@@ -71,7 +71,8 @@
 			// 1. Fetch enrollments with course details
 			const { data: rawEnrollments, error: enrollmentsError } = await supabase
 				.from('enrollments')
-				.select(`
+				.select(
+					`
           enrollment_id,
           courses (
             course_id,
@@ -79,7 +80,8 @@
             ects,
             active
           )
-        `)
+        `
+				)
 				.eq('student_id', studentIdNum);
 
 			if (enrollmentsError) {
@@ -94,8 +96,8 @@
 			}
 
 			const completedEnrollments = rawEnrollments
-				.filter(e => e.courses && e.courses.active === false && e.courses.course_id != null)
-				.map(e => ({
+				.filter((e) => e.courses && e.courses.active === false && e.courses.course_id != null)
+				.map((e) => ({
 					enrollment_id: e.enrollment_id,
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					course: e.courses! // Asserting courses is not null due to filter
@@ -120,16 +122,37 @@
 					.eq('course_id', course_id);
 
 				if (assignmentsError) {
-					console.error(`DEBUG: Failed to fetch assignments for course ${course_name} (ID: ${course_id}):`, assignmentsError.message);
-					return { courseName: course_name, courseId: course_id, weightedAverageGrade: null, ects: ects ?? 0, error: `Assignments fetch failed: ${assignmentsError.message}` };
+					console.error(
+						`DEBUG: Failed to fetch assignments for course ${course_name} (ID: ${course_id}):`,
+						assignmentsError.message
+					);
+					return {
+						courseName: course_name,
+						courseId: course_id,
+						weightedAverageGrade: null,
+						ects: ects ?? 0,
+						error: `Assignments fetch failed: ${assignmentsError.message}`
+					};
 				}
 				if (!assignments || assignments.length === 0) {
-					return { courseName: course_name, courseId: course_id, weightedAverageGrade: null, ects: ects ?? 0, error: 'No assignments found for this course.' };
+					return {
+						courseName: course_name,
+						courseId: course_id,
+						weightedAverageGrade: null,
+						ects: ects ?? 0,
+						error: 'No assignments found for this course.'
+					};
 				}
 
-				const assignmentIds = assignments.map(a => a.assignment_id);
+				const assignmentIds = assignments.map((a) => a.assignment_id);
 				if (assignmentIds.length === 0) {
-					return { courseName: course_name, courseId: course_id, weightedAverageGrade: null, ects: ects ?? 0, error: 'No assignment IDs found for querying grades.' };
+					return {
+						courseName: course_name,
+						courseId: course_id,
+						weightedAverageGrade: null,
+						ects: ects ?? 0,
+						error: 'No assignment IDs found for querying grades.'
+					};
 				}
 
 				const { data: studentGrades, error: gradesError } = await supabase
@@ -139,8 +162,17 @@
 					.in('assignment_id', assignmentIds);
 
 				if (gradesError) {
-					console.error(`DEBUG: Failed to fetch grades for course ${course_name} (ID: ${course_id}):`, gradesError.message);
-					return { courseName: course_name, courseId: course_id, weightedAverageGrade: null, ects: ects ?? 0, error: `Grades fetch failed: ${gradesError.message}` };
+					console.error(
+						`DEBUG: Failed to fetch grades for course ${course_name} (ID: ${course_id}):`,
+						gradesError.message
+					);
+					return {
+						courseName: course_name,
+						courseId: course_id,
+						weightedAverageGrade: null,
+						ects: ects ?? 0,
+						error: `Grades fetch failed: ${gradesError.message}`
+					};
 				}
 
 				let courseWeightedGradeSum = 0;
@@ -148,8 +180,14 @@
 				let gradedAssignmentsCount = 0;
 
 				for (const assignment of assignments) {
-					const studentGradeEntry = studentGrades?.find(sg => sg.assignment_id === assignment.assignment_id);
-					if (studentGradeEntry && typeof studentGradeEntry.grade === 'number' && typeof assignment.weight === 'number') {
+					const studentGradeEntry = studentGrades?.find(
+						(sg) => sg.assignment_id === assignment.assignment_id
+					);
+					if (
+						studentGradeEntry &&
+						typeof studentGradeEntry.grade === 'number' &&
+						typeof assignment.weight === 'number'
+					) {
 						courseWeightedGradeSum += studentGradeEntry.grade * assignment.weight;
 						courseTotalWeight += assignment.weight;
 						gradedAssignmentsCount++;
@@ -158,32 +196,57 @@
 
 				if (courseTotalWeight > 0 && gradedAssignmentsCount > 0) {
 					const weightedAverage = courseWeightedGradeSum / courseTotalWeight;
-					return { courseName: course_name, courseId: course_id, weightedAverageGrade: weightedAverage, ects: ects ?? 0 };
+					return {
+						courseName: course_name,
+						courseId: course_id,
+						weightedAverageGrade: weightedAverage,
+						ects: ects ?? 0
+					};
 				} else {
-					return { courseName: course_name, courseId: course_id, weightedAverageGrade: null, ects: ects ?? 0, error: 'No valid grades or weights to calculate average.' };
+					return {
+						courseName: course_name,
+						courseId: course_id,
+						weightedAverageGrade: null,
+						ects: ects ?? 0,
+						error: 'No valid grades or weights to calculate average.'
+					};
 				}
 			});
 
 			courseGradeDetails = await Promise.all(courseProcessingPromises);
 
-			const validCoursesForGpa = courseGradeDetails.filter(c => typeof c.weightedAverageGrade === 'number' && typeof c.ects === 'number' && c.ects > 0);
+			const validCoursesForGpa = courseGradeDetails.filter(
+				(c) =>
+					typeof c.weightedAverageGrade === 'number' && typeof c.ects === 'number' && c.ects > 0
+			);
 
 			if (validCoursesForGpa.length === 0) {
 				overallWeightedGPA = null;
-				if (!errorMsg && completedEnrollments.length > 0 && courseGradeDetails.some(c => c.error)) {
+				if (
+					!errorMsg &&
+					completedEnrollments.length > 0 &&
+					courseGradeDetails.some((c) => c.error)
+				) {
 					// If there were completed courses, but none yielded a GPA due to errors in processing
 					// errorMsg = "Could not calculate GPA for any course."; // This might be too generic if some courses are fine but just have no grade
 				}
 			} else {
-				const totalWeightedGradeSum = validCoursesForGpa.reduce((sum, course) => sum + (course.weightedAverageGrade as number) * course.ects, 0);
+				const totalWeightedGradeSum = validCoursesForGpa.reduce(
+					(sum, course) => sum + (course.weightedAverageGrade as number) * course.ects,
+					0
+				);
 				const totalEctsForGpa = validCoursesForGpa.reduce((sum, course) => sum + course.ects, 0);
 				overallWeightedGPA = totalEctsForGpa > 0 ? totalWeightedGradeSum / totalEctsForGpa : null;
 			}
 
-			if (courseGradeDetails.filter(cgd => cgd.weightedAverageGrade !== null).length === 0 && !errorMsg && completedEnrollments.length > 0 && !showNoEnrollmentsHtmlMessage) {
-				errorMsg = "No grade data could be calculated for display in chart.";
+			if (
+				courseGradeDetails.filter((cgd) => cgd.weightedAverageGrade !== null).length === 0 &&
+				!errorMsg &&
+				completedEnrollments.length > 0 &&
+				!showNoEnrollmentsHtmlMessage
+			) {
+				errorMsg = 'No grade data could be calculated for display in chart.';
 			}
-
 		} catch (e: unknown) {
 			console.error('DEBUG: Error fetching or processing grade distribution data:', e);
 			if (e instanceof Error) {
@@ -210,7 +273,10 @@
 		let title = 'Course Grade Distribution';
 		if (overallWeightedGPA !== null) {
 			title += ` (Overall ECTS-Weighted GPA: ${overallWeightedGPA.toFixed(2)})`;
-		} else if (!isLoading && (courseGradeDetails.length > 0 || showNoEnrollmentsHtmlMessage || errorMsg)) {
+		} else if (
+			!isLoading &&
+			(courseGradeDetails.length > 0 || showNoEnrollmentsHtmlMessage || errorMsg)
+		) {
 			title += ` (Overall GPA: N/A)`;
 		}
 		return title;
@@ -245,34 +311,38 @@
 
 		// If showNoEnrollmentsHtmlMessage is true, this block will also be hit as chartableCourses will be empty.
 		// The canvas will show a generic "no data" message.
-		const chartableCourses = courseGradeDetails.filter(c => typeof c.weightedAverageGrade === 'number');
+		const chartableCourses = courseGradeDetails.filter(
+			(c) => typeof c.weightedAverageGrade === 'number'
+		);
 
 		if (chartableCourses.length === 0) {
 			ctx.font = '16px Arial';
 			ctx.textAlign = 'center';
 			ctx.fillStyle = '#6B7280';
 			if (courseGradeDetails.length > 0 && !showNoEnrollmentsHtmlMessage) {
-				message = "No courses with calculable grades to display.";
+				message = 'No courses with calculable grades to display.';
 			}
 			ctx.fillText(message, chartCanvas.width / 2, chartCanvas.height / 2);
 			return;
 		}
 
-		const courseNames = chartableCourses.map(c => c.courseName);
-		const courseGrades = chartableCourses.map(c => c.weightedAverageGrade as number);
+		const courseNames = chartableCourses.map((c) => c.courseName);
+		const courseGrades = chartableCourses.map((c) => c.weightedAverageGrade as number);
 		const colors = getBarColors(chartableCourses.length);
 
 		distributionChart = new Chart(ctx, {
 			type: 'bar',
 			data: {
 				labels: courseNames,
-				datasets: [{
-					label: 'Weighted Average Grade',
-					data: courseGrades,
-					backgroundColor: colors.backgrounds,
-					borderColor: colors.borders,
-					borderWidth: 1
-				}]
+				datasets: [
+					{
+						label: 'Weighted Average Grade',
+						data: courseGrades,
+						backgroundColor: colors.backgrounds,
+						borderColor: colors.borders,
+						borderWidth: 1
+					}
+				]
 			},
 			options: {
 				responsive: true,
@@ -296,7 +366,7 @@
 				plugins: {
 					legend: {
 						display: courseNames.length > 1, // Show legend if multiple courses
-						position: 'top',
+						position: 'top'
 					},
 					title: {
 						display: true,
@@ -309,7 +379,7 @@
 					},
 					tooltip: {
 						callbacks: {
-							label: function(context: TooltipItem<'bar'>) {
+							label: function (context: TooltipItem<'bar'>) {
 								let label = context.dataset.label || '';
 								if (label) {
 									label += ': ';
@@ -317,7 +387,7 @@
 								if (context.parsed.y !== null) {
 									label += context.parsed.y.toFixed(2);
 								}
-								const detail = courseGradeDetails.find(c => c.courseName === context.label);
+								const detail = courseGradeDetails.find((c) => c.courseName === context.label);
 								if (detail && detail.ects) {
 									label += ` (ECTS: ${detail.ects})`;
 								}
@@ -346,17 +416,12 @@
 	}
 </script>
 
-<div class="p-6 h-96 relative">
+<div class="relative h-96 p-6">
 	{#if showNoEnrollmentsHtmlMessage}
-		<div class="text-center py-2">
-			<p class="text-gray-600">
-				No courses have been completed yet.
-			</p>
+		<div class="py-2 text-center">
+			<p class="text-gray-600">No courses have been completed yet.</p>
 		</div>
-		{:else}
+	{:else}
 		<canvas bind:this={chartCanvas}></canvas>
 	{/if}
 </div>
-
-
-
