@@ -65,7 +65,7 @@
 				</div>
 				<div class="mb-4">
 					<label for="deckDescription" class="block text-sm font-medium text-gray-700"
-					>Description</label
+						>Description</label
 					>
 					<textarea
 						id="deckDescription"
@@ -86,7 +86,7 @@
 						<div class="flex-grow p-5">
 							<h3 class="mb-2 text-lg font-semibold text-blue-700">
 								<a href="/private/flashdecks/{deck.flashdeck_id}" class="hover:underline"
-								>{deck.name}</a
+									>{deck.name}</a
 								>
 							</h3>
 							{#if deck.description}
@@ -138,7 +138,7 @@
 						<div class="flex-grow p-5">
 							<h3 class="mb-2 text-lg font-semibold text-blue-700">
 								<a href="/private/flashdecks/{deck.flashdeck_id}" class="hover:underline"
-								>{deck.name}</a
+									>{deck.name}</a
 								>
 							</h3>
 							{#if deck.description}

@@ -1,4 +1,4 @@
-import { writable, get } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import type { User } from '@supabase/supabase-js';
 import { browser } from '$app/environment';
 import { supabase as clientSupabase } from '$lib/supabaseClient';

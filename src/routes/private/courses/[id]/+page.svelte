@@ -6,23 +6,23 @@
 	import { slide } from 'svelte/transition';
 	import CourseLeaderboardChart from '$lib/components/CourseLeaderboardChart.svelte';
 	import GradeDistributionCourseChart from '$lib/components/GradeDistributionCourseChart.svelte';
-	import { formSubmitIndicator } from '$lib/actions/formSubmitIndicator'; // Added import
+	import { formSubmitIndicator } from '$lib/actions/formSubmitIndicator';
 
-	// Explicitly type form to include potential outcomes from all actions
 	export type PageActionData = ServerActionData & {
-		message?: string; // General message from updateCourse, addAssignment, etc.
+		message?: string;
 		addStudentSuccess?: string;
 		addStudentError?: string;
-		student_id_form?: string; // To repopulate form on error
+		student_id_form?: string;
 		updatedAssignmentId?: string;
-		markFinishedSuccess?: string; // Added for markCourseFinished
-		markFinishedError?: string; // Added for markCourseFinished
-		actionResult?: string; // Added for markCourseFinished
-		// Add other specific error/success fields from other actions if needed
+		markFinishedSuccess?: string;
+		markFinishedError?: string;
+		actionResult?: string;
+		unenrollStudentSuccess?: string; // Added
+		unenrollStudentError?: string; // Added
 	};
 
 	export let data: PageData;
-	export let form: PageActionData | null = null; // form can be null initially
+	export let form: PageActionData | null = null;
 
 	interface Assignment {
 		assignment_id: string;
@@ -48,9 +48,7 @@
 	let creatingAssignment = false;
 	let editingAssignment: Assignment | null = null;
 	let showAddStudentForm = false;
-	let selectedStudentToAddId: string = ''; // For the select input
-
-	// Error message for new assignment weight sum validation
+	let selectedStudentToAddId: string = '';
 	let newAssignmentWeightSumError: string | null = null;
 
 	let courseEditData = {
@@ -63,7 +61,7 @@
 	let newAssignmentData = {
 		assignment_name: '',
 		due_date: '',
-		weight: '' // User inputs as 0-100
+		weight: ''
 	};
 
 	let assignmentEditData = {
@@ -103,28 +101,32 @@
 		if (form.action === '?/addAssignment') {
 			creatingAssignment = false;
 			newAssignmentData = { assignment_name: '', due_date: '', weight: '' };
-			newAssignmentWeightSumError = null; // Clear error on success
+			newAssignmentWeightSumError = null;
 		}
 		if (form.action === '?/updateAssignment') {
 			if (form.updatedAssignmentId === editingAssignment?.assignment_id) {
 				// editingAssignment = null; // Keep form open if needed, or close
-				// studentGradesEditData = [];
 			}
 		}
 		if (form.action === '?/addStudent') {
 			showAddStudentForm = false;
 			selectedStudentToAddId = '';
 		}
-		// General success case, consider invalidateAll or specific resets
-		if (form.action?.startsWith('?/')) {
-			// invalidateAll(); // Potentially too broad, but ensures data refresh
+		if (form.action === '?/unenrollStudent') {
+			// Success message is handled in the template, data will refresh
 		}
-	} else if (form && !form.success && form.action === '?/addStudent') {
-		// Keep form open on error, potentially repopulate selectedStudentToAddId if needed
-		selectedStudentToAddId = form.student_id_form || '';
+		// General success case, consider invalidateAll or specific resets
+		// if (form.action?.startsWith('?/')) {
+		// invalidateAll(); // Potentially too broad, but ensures data refresh
+		// }
+	} else if (form && !form.success) {
+		if (form.action === '?/addStudent') {
+			selectedStudentToAddId = form.student_id_form || '';
+		}
+		// Error messages for other actions are typically displayed near their forms
+		// or handled by the reactive `form` prop updates.
 	}
 
-	// Clear weight sum error when add assignment form is closed
 	$: if (!creatingAssignment) {
 		newAssignmentWeightSumError = null;
 	}
@@ -154,7 +156,7 @@
 		};
 		creatingAssignment = false;
 		showAddStudentForm = false;
-		newAssignmentWeightSumError = null; // Clear any pending error from add form
+		newAssignmentWeightSumError = null;
 
 		if (data.enrolledStudents && data.allStudentGradesForCourse) {
 			studentGradesEditData = data.enrolledStudents.map((enrollment) => {
@@ -165,7 +167,7 @@
 				);
 				return {
 					enrollment_id: enrollment.enrollment_id,
-					student_id: enrollment.students?.student_id || -1, // Fallback, should always exist
+					student_id: enrollment.students?.student_id || -1,
 					student_name: `${enrollment.students?.first_name || 'N/A'} ${enrollment.students?.last_name || 'N/A'}`,
 					grade: gradeInfo?.grade?.toString() || '',
 					student_grade_id: gradeInfo?.student_grade_id || null
@@ -183,19 +185,13 @@
 		if (confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) {
 			const formData = new FormData();
 			formData.append('assignment_id', assignmentId);
-			// Using fetch API directly for delete to simplify form handling for this case
 			const response = await fetch('?/deleteAssignment', {
 				method: 'POST',
 				body: formData
 			});
-			// const result = await response.json(); // SvelteKit's enhance handles JSON parsing
 			if (response.ok) {
-				// Check if response is ok
-				// form prop will be updated by enhance, triggering reactive updates
-				await invalidateAll(); // Ensure data is fresh
+				await invalidateAll();
 			} else {
-				// Handle error, perhaps show a notification
-				// console.error("Failed to delete assignment", await response.json());
 				alert('Failed to delete assignment. Check console for details.');
 			}
 		}
@@ -203,12 +199,12 @@
 
 	function toggleAddStudentForm() {
 		showAddStudentForm = !showAddStudentForm;
-		creatingAssignment = false; // Close other forms
+		creatingAssignment = false;
 		editingAssignment = null;
-		newAssignmentWeightSumError = null; // Clear assignment error
+		newAssignmentWeightSumError = null;
 		if (!showAddStudentForm) {
-			selectedStudentToAddId = ''; // Reset selection when closing
-			if (form?.addStudentError) form.addStudentError = undefined; // Clear previous error
+			selectedStudentToAddId = '';
+			if (form?.addStudentError) form.addStudentError = undefined;
 			if (form?.addStudentSuccess) form.addStudentSuccess = undefined;
 		}
 	}
@@ -216,6 +212,7 @@
 	$: canManageCourse =
 		role === 'admin' || (role === 'instructor' && course?.instructors?.user_id === user?.id);
 
+	// ... (getAssignmentStatus, allAssignmentsGraded, handleMarkFinishedSubmit, calculateCurrentTotalWeight functions remain the same) ...
 	function getAssignmentStatus(
 		assignment: Assignment,
 		enrolledCourseStudents: PageData['enrolledStudents'],
@@ -240,16 +237,12 @@
 			courseGrades
 		) {
 			if (enrolledCourseStudents.length === 0) {
-				return 'done'; // No students, so nothing to grade.
+				return 'done';
 			}
 
 			let allStudentsGradedForThisAssignment = true;
 			for (const enrollment of enrolledCourseStudents) {
-				// Ensure enrollment and student data exist
 				if (!enrollment?.students) {
-					// This case implies an issue with enrollment data integrity.
-					// Depending on desired behavior, could mark as not done or log an error.
-					// For now, assume if an enrollment exists, it's for a valid student to be graded.
 				}
 				const gradeRecord = courseGrades.find(
 					(g) =>
@@ -277,30 +270,27 @@
 		enrolledStudents: PageData['enrolledStudents'],
 		allStudentGrades: PageData['allStudentGradesForCourse']
 	): boolean {
-		if (!assignments || assignments.length === 0) return true; // No assignments to grade
-		if (!enrolledStudents || enrolledStudents.length === 0) return true; // No students to grade
+		if (!assignments || assignments.length === 0) return true;
+		if (!enrolledStudents || enrolledStudents.length === 0) return true;
 
-		// Ensure allStudentGrades is not null for the check
-		if (!allStudentGrades) return false; // Missing grade data implies not all graded
+		if (!allStudentGrades) return false;
 
 		for (const assignment of assignments) {
 			for (const studentEnrollment of enrolledStudents) {
-				// studentEnrollment.students can be null if the join fails
 				if (!studentEnrollment.students) continue;
 
 				const hasGrade = allStudentGrades.some(
 					(grade) =>
 						grade.assignment_id === assignment.assignment_id &&
 						grade.enrollment_id === studentEnrollment.enrollment_id &&
-						grade.grade !== null // Entscheidend ist, dass eine Note vorhanden ist
+						grade.grade !== null
 				);
 				if (!hasGrade) {
-					// console.log(`Missing grade for student ${studentEnrollment.students?.student_id} on assignment ${assignment.assignment_id}`);
-					return false; // Dieser Student hat keine Note für diese Aufgabe
+					return false;
 				}
 			}
 		}
-		return true; // Alle Studenten haben Noten für alle Aufgaben
+		return true;
 	}
 
 	const handleMarkFinishedSubmit = async ({ cancel }: { cancel: () => void }) => {
@@ -316,14 +306,11 @@
 					'Not all assignments are graded for every student. Mark course as finished anyway?'
 				)
 			) {
-				cancel(); // prevent form submission
+				cancel();
 			}
 		}
-		// Proceed with submission if assignmentsDone is true or the user confirmed.
-		// After submission the load function runs again to refresh data.
 	};
 
-	// Function to calculate total weight of existing assignments
 	function calculateCurrentTotalWeight(existingAssignments: PageData['assignments']): number {
 		if (!existingAssignments || existingAssignments.length === 0) {
 			return 0;
@@ -335,9 +322,11 @@
 			return sum;
 		}, 0);
 	}
+
 </script>
 
 <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+	<!-- ... (Course Information, Performance Overview, Assignments sections remain the same) ... -->
 	<div class="mb-8 flex items-center justify-between">
 		<h1 class="text-3xl font-bold text-gray-800">Course Details</h1>
 		<a
@@ -355,7 +344,7 @@
 				<form method="POST" action="?/updateCourse" use:enhance class="space-y-6">
 					<div>
 						<label for="course_name" class="block text-sm font-medium text-gray-700"
-							>Course Name</label
+						>Course Name</label
 						>
 						<input
 							type="text"
@@ -406,12 +395,12 @@
 							type="button"
 							on:click={() => (editingCourse = false)}
 							class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-							>Cancel</button
+						>Cancel</button
 						>
 						<button
 							type="submit"
 							class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
-							>Save Changes</button
+						>Save Changes</button
 						>
 					</div>
 					{#if form?.action === '?/updateCourse' && form?.message && !form?.success}
@@ -431,12 +420,12 @@
 							{#if course.active}
 								<span
 									class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800"
-									>Active</span
+								>Active</span
 								>
 							{:else}
 								<span
 									class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800"
-									>Inactive</span
+								>Inactive</span
 								>
 							{/if}
 						</div>
@@ -447,7 +436,6 @@
 						</p>
 					</div>
 					{#if canManageCourse && course.active}
-						<!-- Nur anzeigen, wenn Kurs aktiv ist -->
 						<button
 							on:click={() => (editingCourse = true)}
 							class="rounded-lg bg-blue-500 px-3 py-2 text-sm font-semibold text-white shadow transition duration-150 ease-in-out hover:bg-blue-600"
@@ -487,7 +475,6 @@
 			<div class="mb-6 flex items-center justify-between">
 				<h2 class="text-2xl font-semibold text-gray-800">Assignments</h2>
 				{#if canManageCourse && course.active}
-					<!-- Nur anzeigen, wenn Kurs aktiv ist -->
 					<button
 						on:click={() => {
 							creatingAssignment = true;
@@ -509,7 +496,7 @@
 						method="POST"
 						action="?/addAssignment"
 						use:enhance={({ formData, cancel }) => {
-							newAssignmentWeightSumError = null; // Reset error on new submission attempt
+							newAssignmentWeightSumError = null;
 							const currentTotalWeight = calculateCurrentTotalWeight(data.assignments);
 							const newWeightInputString = formData.get('weight') as string | null;
 
@@ -528,25 +515,22 @@
 							}
 
 							const newWeightDecimal = newWeightInput / 100;
-							const epsilon = 0.00001; // For floating point comparison
+							const epsilon = 0.00001;
 
 							if (currentTotalWeight + newWeightDecimal > 1 + epsilon) {
 								newAssignmentWeightSumError = `The sum of all assignment weights (currently ${(currentTotalWeight * 100).toFixed(0)}%) plus the new assignment's weight (${newWeightInput}%) would exceed 100%.`;
 								cancel();
 								return;
 							}
-
-							// If validation passes, allow submission.
 							return async ({ update }) => {
-								await update({ reset: false }); // Server action handles reset on success
-								// Reactive statements will handle UI changes
+								await update({ reset: false });
 							};
 						}}
 						class="space-y-4 rounded-lg bg-gray-50 p-6 shadow"
 					>
 						<div>
 							<label for="new_assignment_name" class="block text-sm font-medium text-gray-700"
-								>Assignment Name</label
+							>Assignment Name</label
 							>
 							<input
 								type="text"
@@ -560,7 +544,7 @@
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
 								<label for="new_due_date" class="block text-sm font-medium text-gray-700"
-									>Due Date</label
+								>Due Date</label
 								>
 								<input
 									type="date"
@@ -573,7 +557,7 @@
 							</div>
 							<div>
 								<label for="new_weight" class="block text-sm font-medium text-gray-700"
-									>Weight (%)</label
+								>Weight (%)</label
 								>
 								<input
 									type="number"
@@ -604,13 +588,13 @@
 									newAssignmentWeightSumError = null;
 								}}
 								class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-200"
-								>Cancel</button
+							>Cancel</button
 							>
 							<button
 								type="submit"
 								use:formSubmitIndicator
 								class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
-								>Add Assignment</button
+							>Add Assignment</button
 							>
 						</div>
 					</form>
@@ -618,7 +602,6 @@
 			{/if}
 
 			{#if editingAssignment && canManageCourse && course.active}
-				<!-- Nur anzeigen, wenn Kurs aktiv ist -->
 				<div transition:slide={{ duration: 300 }}>
 					<h3 class="mb-4 text-xl font-semibold text-gray-700">
 						Edit Assignment: <span class="font-normal">{editingAssignment.assignment_name}</span>
@@ -636,7 +619,7 @@
 						/>
 						<div>
 							<label for="edit_assignment_name" class="block text-sm font-medium text-gray-700"
-								>Assignment Name</label
+							>Assignment Name</label
 							>
 							<input
 								type="text"
@@ -650,7 +633,7 @@
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
 								<label for="edit_due_date" class="block text-sm font-medium text-gray-700"
-									>Due Date</label
+								>Due Date</label
 								>
 								<input
 									type="date"
@@ -663,7 +646,7 @@
 							</div>
 							<div>
 								<label for="edit_weight" class="block text-sm font-medium text-gray-700"
-									>Weight (%)</label
+								>Weight (%)</label
 								>
 								<input
 									type="number"
@@ -717,12 +700,12 @@
 								type="button"
 								on:click={cancelEditAssignment}
 								class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-200"
-								>Cancel</button
+							>Cancel</button
 							>
 							<button
 								type="submit"
 								class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
-								>Save Changes</button
+							>Save Changes</button
 							>
 						</div>
 						{#if form?.action === '?/updateAssignment' && form?.updatedAssignmentId === editingAssignment?.assignment_id && form?.message && !form?.success}
@@ -748,10 +731,9 @@
 									<h4 class="text-lg font-semibold text-blue-700">{assignment.assignment_name}</h4>
 									<p class="text-xs text-gray-500">
 										Due: {formatDate(assignment.due_date, true)} |
-										<!-- Max Points: {assignment.max_points ?? 'N/A'} | Removed -->
 										Weight: {assignment.weight !== null && assignment.weight !== undefined
-											? `${assignment.weight * 100}%`
-											: 'N/A'}
+										? `${assignment.weight * 100}%`
+										: 'N/A'}
 									</p>
 								</div>
 								<div class="flex items-center space-x-2">
@@ -774,7 +756,6 @@
 													: 'Unknown'}
 									</span>
 									{#if canManageCourse && course.active}
-										<!-- Nur anzeigen, wenn Kurs aktiv ist -->
 										<button
 											on:click={() => handleEditAssignment(assignment)}
 											title="Edit Assignment"
@@ -785,9 +766,9 @@
 												viewBox="0 0 20 20"
 												fill="currentColor"
 												class="h-4 w-4"
-												><path
-													d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
-												></path></svg
+											><path
+												d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+											></path></svg
 											>
 										</button>
 										<button
@@ -800,11 +781,11 @@
 												viewBox="0 0 20 20"
 												fill="currentColor"
 												class="h-4 w-4"
-												><path
-													fill-rule="evenodd"
-													d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.177-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25V4h2.5zM8.5 7.5a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5zm3 0a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5z"
-													clip-rule="evenodd"
-												></path></svg
+											><path
+												fill-rule="evenodd"
+												d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.177-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25V4h2.5zM8.5 7.5a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5zm3 0a.75.75 0 00-1.5 0v7.5a.75.75 0 001.5 0v-7.5z"
+												clip-rule="evenodd"
+											></path></svg
 											>
 										</button>
 									{/if}
@@ -818,13 +799,13 @@
 			{/if}
 		</div>
 
+
 		<!-- Enrolled Students Section (Admin/Instructor) -->
 		{#if canManageCourse}
 			<div class="mb-8 rounded-xl bg-white p-6 shadow-xl">
 				<div class="mb-6 flex items-center justify-between">
 					<h2 class="text-2xl font-semibold text-gray-700">Enrolled Students</h2>
 					{#if !showAddStudentForm && course.active}
-						<!-- Nur anzeigen, wenn Kurs aktiv ist -->
 						<button
 							on:click={toggleAddStudentForm}
 							class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:outline-none"
@@ -835,7 +816,6 @@
 				</div>
 
 				{#if showAddStudentForm && course.active}
-					<!-- Nur anzeigen, wenn Kurs aktiv ist -->
 					<div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4" transition:slide>
 						<h3 class="mb-3 text-lg font-medium text-gray-900">Add New Student to Course</h3>
 						<form
@@ -843,21 +823,18 @@
 							action="?/addStudent"
 							use:enhance={() => {
 								return async ({ update }) => {
-									await update({ reset: false }); // Prevent form reset by default, handle manually or let SvelteKit manage based on success
+									await update({ reset: false });
 									if (form?.success && form.action === '?/addStudent') {
 										showAddStudentForm = false;
 										selectedStudentToAddId = '';
-										await invalidateAll(); // Refresh all data
-									} else if (form && !form.success && form.action === '?/addStudent') {
-										// Error occurred, form remains open, error message is shown
-										// selectedStudentToAddId might be repopulated from form.student_id_form if set by server
+										await invalidateAll();
 									}
 								};
 							}}
 						>
 							<div class="mb-4">
 								<label for="student_id" class="mb-1 block text-sm font-medium text-gray-700"
-									>Select Student:</label
+								>Select Student:</label
 								>
 								{#if availableStudents && availableStudents.length > 0}
 									<select
@@ -906,6 +883,19 @@
 					</div>
 				{/if}
 
+				{#if form?.action === '?/unenrollStudent'}
+					{#if form?.unenrollStudentSuccess}
+						<p class="mt-2 mb-2 rounded-md bg-green-50 p-3 text-sm text-green-700">
+							{form.unenrollStudentSuccess}
+						</p>
+					{/if}
+					{#if form?.unenrollStudentError}
+						<p class="mt-2 mb-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
+							{form.unenrollStudentError}
+						</p>
+					{/if}
+				{/if}
+
 				{#if enrolledStudents && enrolledStudents.length > 0}
 					<ul class="space-y-3">
 						{#each enrolledStudents as enrollment (enrollment.enrollment_id)}
@@ -919,15 +909,37 @@
 										{enrollment.students?.last_name || 'N/A'}
 									</a>
 									<span class="ml-2 text-sm text-gray-500"
-										>({enrollment.students?.email || 'No email'})</span
+									>({enrollment.students?.email || 'No email'})</span
 									>
 								</div>
-								<!-- Placeholder for "Remove Student" button or other actions -->
-								<!--
-                                <button class="text-red-500 hover:text-red-700 text-sm">
-                                    Remove
-                                </button>
-                                -->
+								{#if canManageCourse && course.active}
+									<form
+										method="POST"
+										action="?/unenrollStudent"
+										use:enhance={({ cancel }) => {
+											if (
+												!confirm(
+													'Are you sure you want to unenroll this student? Their grades for this course will also be deleted. This action cannot be undone.'
+												)
+											) {
+												cancel();
+												return;
+											}
+											return async ({ update }) => {
+												await update({ reset: false });
+											};
+										}}
+										class="inline"
+									>
+										<input type="hidden" name="enrollment_id" value={enrollment.enrollment_id} />
+										<button
+											type="submit"
+											class="text-xs font-medium text-red-600 hover:text-red-800 hover:underline focus:outline-none"
+										>
+											Unenroll
+										</button>
+									</form>
+								{/if}
 							</li>
 						{/each}
 					</ul>
@@ -960,11 +972,10 @@
 							<li class="rounded-md bg-gray-50 p-3 shadow-sm">
 								<div class="flex items-center justify-between">
 									<span class="font-medium text-gray-700"
-										>{gradeItem.assignments.assignment_name}</span
+									>{gradeItem.assignments.assignment_name}</span
 									>
 									{#if gradeItem.grade !== null}
 										{@const gradeValue = gradeItem.grade}
-										<!-- {@const maxPointsForColor = gradeItem.assignments.max_points || 6}  Removed as max_points might not be consistently available or used for this color logic -->
 										<span
 											class="rounded-full px-3 py-1 text-sm font-semibold
                                             {gradeValue >= 5
@@ -981,15 +992,15 @@
 										</span>
 									{:else}
 										<span class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-500"
-											>Not Graded</span
+										>Not Graded</span
 										>
 									{/if}
 								</div>
 								<p class="mt-1 text-xs text-gray-500">
 									Due: {formatDate(gradeItem.assignments.due_date, true)} | Weight: {gradeItem
-										.assignments.weight !== null
-										? `${(gradeItem.assignments.weight * 100).toFixed(0)}%`
-										: 'N/A'}
+									.assignments.weight !== null
+									? `${(gradeItem.assignments.weight * 100).toFixed(0)}%`
+									: 'N/A'}
 								</p>
 								{#if gradeItem.submission_date}
 									<p class="mt-1 text-xs text-gray-500">
@@ -1039,7 +1050,7 @@
 
 		<!-- Course Administration Section -->
 		{#if (data.role === 'admin' || (data.role === 'instructor' && data.course?.instructors?.user_id === $page.data.user?.id)) && data.course?.active}
-			<div class="mt-8 mb-8 ">
+			<div class="mt-8 mb-8">
 				<form method="POST" action="?/markCourseFinished" use:enhance={handleMarkFinishedSubmit}>
 					<button
 						type="submit"
@@ -1084,7 +1095,7 @@
 			<p class="text-xl font-semibold text-red-600">Course Not Found or Error</p>
 			<p class="mt-2 text-gray-500">
 				{data.error?.message ||
-					'The course with the requested ID could not be found or an error occurred.'}
+				'The course with the requested ID could not be found or an error occurred.'}
 			</p>
 			<a
 				href="/private/courses"

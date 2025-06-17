@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { type CookieOptions, createServerClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { dev } from '$app/environment';
 import type { Actions, PageServerLoad } from './$types';

@@ -1,10 +1,10 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	createStudent,
+	deleteStudent,
 	getAllStudents,
 	getStudentById,
-	createStudent,
-	updateStudent,
-	deleteStudent
+	updateStudent
 } from '../students';
 import { supabase } from '$lib/supabaseClient';
 

@@ -12,8 +12,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const sortOrderParam = url.searchParams.get('sort_order');
 
 	const validSortColumns = ['first_name', 'last_name', 'email'];
-	let sortBy = sortByParam && validSortColumns.includes(sortByParam) ? sortByParam : 'last_name'; // Default sorting
-	let sortOrder: 'asc' | 'desc' = sortOrderParam === 'desc' ? 'desc' : 'asc';
+	const sortBy = sortByParam && validSortColumns.includes(sortByParam) ? sortByParam : 'last_name'; // Default sorting
+	const sortOrder: 'asc' | 'desc' = sortOrderParam === 'desc' ? 'desc' : 'asc';
 	const ascending = sortOrder === 'asc';
 
 	// Fetch and sort instructors

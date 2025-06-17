@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { isFormSubmitting, startFormSubmission, endFormSubmission } from './formLoadingStore';
+import { describe, expect, it } from 'vitest';
+import { endFormSubmission, isFormSubmitting, startFormSubmission } from './formLoadingStore';
 import { get } from 'svelte/store';
 
 describe('formLoadingStore', () => {

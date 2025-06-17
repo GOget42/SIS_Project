@@ -1,21 +1,21 @@
 <script lang="ts">
-    import type { PageData } from './$types';
-    import StudentsPerCourseChart from '$lib/components/StudentsPerCourseChart.svelte';
-    import ProgressChart from '$lib/components/ProgressChart.svelte';
-    import GradeDistributionStudentChart from '$lib/components/GradeDistributionStudentChart.svelte';
-    import StudentAssignmentTimeline from '$lib/components/StudentAssignmentTimeline.svelte';
-    import GradeDistributionInstructorChart from '$lib/components/GradeDistributionInstructorChart.svelte';
-    import InstructorAssignmentTimeline from '$lib/components/InstructorAssignmentTimeline.svelte';
-    import AdminCourseOverview from '$lib/components/AdminCourseOverview.svelte';
-    import AdminStudentOverview from '$lib/components/AdminStudentOverview.svelte';
+	import type { PageData } from './$types';
+	import StudentsPerCourseChart from '$lib/components/StudentsPerCourseChart.svelte';
+	import ProgressChart from '$lib/components/ProgressChart.svelte';
+	import GradeDistributionStudentChart from '$lib/components/GradeDistributionStudentChart.svelte';
+	import StudentAssignmentTimeline from '$lib/components/StudentAssignmentTimeline.svelte';
+	import GradeDistributionInstructorChart from '$lib/components/GradeDistributionInstructorChart.svelte';
+	import InstructorAssignmentTimeline from '$lib/components/InstructorAssignmentTimeline.svelte';
+	import AdminCourseOverview from '$lib/components/AdminCourseOverview.svelte';
+	import AdminStudentOverview from '$lib/components/AdminStudentOverview.svelte';
 
 	export let data: PageData;
 
 	const user = data.user;
-	const profile = data.profile; // This is ProfilesRow | null
+	const profile = data.profile; // ProfilesRow | null
 	const role = data.role;
 
-	// --- Studenten specific logic ---
+	// --- Student-specific logic ---
 	interface CourseDataForStudent {
 		course_id: number;
 		course_name: string;
@@ -31,10 +31,9 @@
 
 	let studentIdForCharts: string | undefined = undefined;
 
-	// --- Instructor specific reactive variables ---
+	// --- Instructor-specific reactive variables ---
 	let instructorProfileForChart: { instructor_id: number } | undefined = undefined;
-	let instructorStudentEnrollmentChartData: Array<{ course_name: string; student_count: number }> =
-		[];
+	let instructorStudentEnrollmentChartData: Array<{ course_name: string; student_count: number }> = [];
 
 	interface InstructorCourseSummary {
 		course_id: number;
@@ -45,7 +44,7 @@
 		ects: number;
 	}
 
-	// --- Admin specific types ---
+	// --- Admin-specific types ---
 	interface AdminCourseSummary {
 		course_id: number;
 		course_name: string;
@@ -56,6 +55,7 @@
 		instructor_name?: string | null;
 	}
 
+	// Reactive block for ID and chart data
 	$: {
 		if (
 			role === 'student' &&
@@ -76,7 +76,9 @@
 				instructorProfileForChart = undefined;
 			}
 
-			const coursesForInstructor = data.courses as InstructorCourseSummary[] | undefined;
+			const coursesForInstructor = Array.isArray(data.courses)
+				? (data.courses as InstructorCourseSummary[])
+				: undefined;
 			if (coursesForInstructor) {
 				instructorStudentEnrollmentChartData = coursesForInstructor.map((c) => ({
 					course_name: c.course_name,
@@ -87,6 +89,15 @@
 			}
 		}
 	}
+
+	// Reactive derivation of typed course lists
+	$: coursesForStudent = Array.isArray(data.courses)
+		? (data.courses as CourseDataForStudent[])
+		: undefined;
+
+	$: instructorCourses = Array.isArray(data.courses)
+		? (data.courses as InstructorCourseSummary[])
+		: undefined;
 </script>
 
 <div class="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -96,7 +107,9 @@
 				Welcome, <span class="text-blue-600 capitalize">{role || 'User'}</span>
 				{profile.first_name || user.email?.split('@')[0]}!
 			</h1>
-			<p class="text-md text-gray-600"><strong>Email:</strong> {profile.email || user.email}</p>
+			<p class="text-md text-gray-600">
+				<strong>Email:</strong> {profile.email || user.email}
+			</p>
 		</div>
 
 		{#if role === 'student'}
@@ -124,21 +137,20 @@
 				</div>
 			{/if}
 
-			{#if data.courses && (data.courses as CourseDataForStudent[]).length > 0}
+			{#if coursesForStudent && coursesForStudent.length > 0}
 				<div class="mt-8 rounded-lg bg-white p-6 shadow-md">
 					<h2 class="mb-4 text-2xl font-semibold text-gray-700">Enrolled Courses</h2>
 					<ul class="space-y-3">
-						{#each data.courses as course (course.course_id)}
-							{@const studentCourse = course as CourseDataForStudent}
+						{#each coursesForStudent as course (course.course_id)}
 							<li class="rounded-md border border-gray-200 p-4 hover:bg-gray-50">
 								<a
-									href={`/private/courses/${studentCourse.course_id}`}
+									href={`/private/courses/${course.course_id}`}
 									class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
 								>
-									{studentCourse.course_name}
-									{#if studentCourse.ects}<span class="text-sm text-gray-500">
-											({studentCourse.ects} ECTS)</span
-										>{/if}
+									{course.course_name}
+									{#if course.ects}
+										<span class="text-sm text-gray-500">({course.ects} ECTS)</span>
+									{/if}
 								</a>
 							</li>
 						{/each}
@@ -149,8 +161,8 @@
 					<p class="text-gray-500">You are not enrolled in any courses.</p>
 				</div>
 			{/if}
+
 		{:else if role === 'instructor'}
-			{@const instructorCourses = data.courses as InstructorCourseSummary[] | undefined}
 			<div class="mb-8 rounded-xl bg-white p-6 shadow-xl">
 				<h2 class="mb-6 text-2xl font-semibold text-gray-800">Performance Overview</h2>
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -204,7 +216,6 @@
 				</div>
 			</div>
 
-			<!-- StudentAssignmentTimeline for Instructor -->
 			{#if instructorProfileForChart?.instructor_id}
 				<div class="my-8">
 					<InstructorAssignmentTimeline
@@ -232,7 +243,9 @@
 									class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
 								>
 									{course.course_name}
-									<span class="text-sm text-gray-500">({course.format}, {course.ects} ECTS)</span>
+									<span class="text-sm text-gray-500">
+                    ({course.format}, {course.ects} ECTS)
+                  </span>
 								</a>
 							</li>
 						{/each}
@@ -243,6 +256,7 @@
 					<p class="text-gray-500">You are not teaching any courses.</p>
 				</div>
 			{/if}
+
 		{:else if role === 'admin'}
 			<div class="mb-8">
 				<div class="p-6">

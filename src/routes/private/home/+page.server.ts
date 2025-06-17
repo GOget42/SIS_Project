@@ -60,7 +60,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		| Tables<'admins'>
 		| { first_name?: string | null; email?: string | null }
 		| null = null;
-	let role: string = user.user_metadata?.role || '';
+	const role: string = user.user_metadata?.role || '';
 
 	let coursesData: CourseDataForStudent[] | InstructorCourseSummary[] | AdminCourseSummary[] = [];
 	let upcomingInstructorAssignments: InstructorUpcomingAssignment[] | undefined = undefined;
@@ -116,7 +116,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 				const teachingCourses = teachingCoursesRaw || [];
 				const instructorCourseSummaries: InstructorCourseSummary[] = [];
-				let collectedRawAssignmentsForInstructor: {
+				const collectedRawAssignmentsForInstructor: {
 					assignment_id: string;
 					name: string;
 					dueDate: string;

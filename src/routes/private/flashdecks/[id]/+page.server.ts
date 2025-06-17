@@ -138,7 +138,11 @@ export const actions: Actions = {
 			.single();
 
 		if (deckOwnerError || !deckOwner) {
-			return fail(500, { message: 'Could not verify card ownership (deck not found).', success: false, cardId });
+			return fail(500, {
+				message: 'Could not verify card ownership (deck not found).',
+				success: false,
+				cardId
+			});
 		}
 
 		if (deckOwner.user_id !== session.user.id) {
@@ -217,7 +221,10 @@ export const actions: Actions = {
 			.single();
 
 		if (deckOwnerError || !deckOwner) {
-			return fail(500, { message: 'Could not verify card ownership (deck not found).', success: false });
+			return fail(500, {
+				message: 'Could not verify card ownership (deck not found).',
+				success: false
+			});
 		}
 
 		if (deckOwner.user_id !== session.user.id) {

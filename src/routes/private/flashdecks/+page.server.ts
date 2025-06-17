@@ -71,9 +71,18 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 			console.warn('Error fetching instructor profiles:', instructorProfilesError.message);
 		} else if (instructorProfiles) {
 			instructorProfiles.forEach((p) => {
-				const instructorName = p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.email;
+				const instructorName = p.first_name
+					? `${p.first_name} ${p.last_name || ''}`.trim()
+					: p.email;
 				const existingName = profilesMap.get(p.user_id);
-				if (!existingName || (existingName && existingName.includes('@') && instructorName && !instructorName.includes('@')) || !profilesMap.has(p.user_id) ) {
+				if (
+					!existingName ||
+					(existingName &&
+						existingName.includes('@') &&
+						instructorName &&
+						!instructorName.includes('@')) ||
+					!profilesMap.has(p.user_id)
+				) {
 					profilesMap.set(p.user_id, instructorName);
 				}
 			});
@@ -101,7 +110,13 @@ export const actions: Actions = {
 		const description = formData.get('description') as string | null;
 
 		if (!name || name.trim() === '') {
-			return fail(400, { success: false, message: 'Deck name is required.', name, description, action: '?/createDeck' });
+			return fail(400, {
+				success: false,
+				message: 'Deck name is required.',
+				name,
+				description,
+				action: '?/createDeck'
+			});
 		}
 
 		const newDeck: TablesInsert<'decks'> = {
@@ -110,7 +125,11 @@ export const actions: Actions = {
 			user_id: userId
 		};
 
-		const { data, error: insertError } = await supabase.from('decks').insert(newDeck).select().single();
+		const { data, error: insertError } = await supabase
+			.from('decks')
+			.insert(newDeck)
+			.select()
+			.single();
 
 		if (insertError) {
 			console.error('Error creating deck:', insertError);
@@ -122,7 +141,12 @@ export const actions: Actions = {
 				action: '?/createDeck'
 			});
 		}
-		return { success: true, message: 'Deck created successfully!', createdDeck: data, action: '?/createDeck' };
+		return {
+			success: true,
+			message: 'Deck created successfully!',
+			createdDeck: data,
+			action: '?/createDeck'
+		};
 	},
 
 	deleteDeck: async ({ request, locals: { supabase, getSession } }) => {
