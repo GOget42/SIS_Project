@@ -5,7 +5,7 @@ import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/publi
 import { dev } from '$app/environment';
 import type { Actions, PageServerLoad } from './$types';
 
-// Wenn ein bereits eingeloggter Benutzer /login aufruft, direkt weiterleiten
+// Redirect immediately if a logged-in user accesses /login
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.session) {
 		console.log('[LOGIN LOAD] User already logged in, redirecting to /private/home from', url.pathname);
@@ -26,8 +26,8 @@ export const actions: Actions = {
 
 		console.log('[LOGIN ACTION] Attempting login for:', email);
 
-		// Supabase Client wird hier neu erstellt, da locals.supabase in Actions nicht immer zuverlässig ist
-		// für auth-Operationen, die Cookies direkt setzen müssen.
+                // Recreate the Supabase client here because locals.supabase is not always reliable in actions
+                // for auth operations that need to set cookies directly.
 		const supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 			cookies: {
 				getAll: () => {
@@ -36,7 +36,7 @@ export const actions: Actions = {
 				},
 				setAll: (cookieArray: { name: string; value: string; options: CookieOptions }[]) => {
 					cookieArray.forEach(({ name, value, options }) => {
-						cookies.set(name, value, { ...options, path: '/' }); // Sicherstellen, dass path gesetzt ist
+                                                cookies.set(name, value, { ...options, path: '/' }); // Ensure path is set
 					});
 				}
 			},
@@ -56,8 +56,8 @@ export const actions: Actions = {
 		}
 
 		console.log('[LOGIN ACTION] Supabase signInWithPassword success. User:', data.user?.id);
-		// Cookies werden durch Supabase Client gesetzt.
-		// Die Session wird im nächsten Request durch den Hook geladen.
+             // Cookies are set by the Supabase client.
+             // The session will be loaded on the next request via the hook.
 		throw redirect(303, '/private/home');
 	}
 };

@@ -1,10 +1,10 @@
 <script lang="ts">
-	// Zukünftige Erweiterungen könnten Props für Anpassungen sein
+        // Future enhancements could expose props for customization
 </script>
 
 <div class="loading-indicator">
 	<div class="spinner"></div>
-	<p>Laden...</p>
+        <p>Loading...</p>
 </div>
 
 <style>
@@ -19,7 +19,7 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        z-index: 9999; /* Stellt sicher, dass es über anderen Inhalten liegt */
+        z-index: 9999; /* Ensures it appears above other content */
     }
 
     .spinner {

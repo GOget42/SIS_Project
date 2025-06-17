@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { deleteAuthUser } from '$lib/api/auth.ts';
-import type { StaffCourseAssignment, CourseInfo, Assignment as StaffPageAssignment } from './$types'; // Stellen Sie sicher, dass diese Typen in $types definiert sind oder passen Sie sie an
+import type { StaffCourseAssignment, CourseInfo, Assignment as StaffPageAssignment } from './$types'; // Ensure these types are defined in $types or adjust accordingly
 
 export const load: PageServerLoad = async ({ locals: { supabase, getSession }, params }) => {
 	const session = await getSession();
@@ -25,12 +25,12 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 		.single();
 
 	if (instructorError || !instructor) {
-		// Im Fehlerfall oder wenn kein Dozent gefunden wurde, leere Arrays zurückgeben,
-		// damit die Seite nicht bricht und eine "Nicht gefunden"-Nachricht anzeigen kann.
+               // In case of an error or if no instructor was found, return empty arrays
+               // so the page does not break and can show a "Not found" message.
 		return { staffMember: null, assignedCourses: [], availableTasks: [] };
 	}
 
-	// Kurse abrufen, für die der Dozent zuständig ist, inklusive deren Assignments
+       // Fetch courses the instructor is responsible for, including assignments
 	const { data: coursesData, error: coursesError } = await supabase
 		.from('courses')
 		.select(`
@@ -49,7 +49,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 	if (coursesError) {
 		console.error('Error fetching courses for staff member:', coursesError);
 	} else if (coursesData) {
-		// Erstelle ein Array von Promises, um die Studentenzahlen für jeden Kurs parallel abzurufen
+             // Create an array of promises to fetch student counts for each course in parallel
 		const coursePromises = coursesData.map(async (course) => {
 			const { count: studentCount, error: countError } = await supabase
 				.from('enrollments')
@@ -66,7 +66,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 				course: {
 					course_id: course.course_id,
 					course_name: course.course_name,
-					student_count: studentCount === null ? 0 : studentCount, // Studentenzahl hinzufügen
+                             student_count: studentCount === null ? 0 : studentCount, // Add student count
 				} as CourseInfo,
 				assignments: (course.assignments || []).map(asm => ({
 					assignment_id: asm.assignment_id,

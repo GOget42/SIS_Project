@@ -1,9 +1,9 @@
 // src/lib/api/students.ts
-import type { Database } from '$lib/supabaseClient'; // Stellt sicher, dass 'Database' von supabaseClient exportiert wird
+import type { Database } from '$lib/supabaseClient'; // Ensure 'Database' is exported from supabaseClient
 import { supabase } from '$lib/supabaseClient';
 
-// Die Supabase-Typen (Row, Insert, Update) sollten student_id bereits als number definieren,
-// wenn es in der DB ein Integer ist und die Typen korrekt generiert wurden.
+// The Supabase types (Row, Insert, Update) should already define student_id as a number
+// if it is an integer in the DB and the types were generated correctly.
 type Student = Database['public']['Tables']['students']['Row'];
 type NewStudent = Database['public']['Tables']['students']['Insert'];
 type StudentUpdate = Database['public']['Tables']['students']['Update'];
@@ -18,15 +18,15 @@ export async function getStudentById(id: number): Promise<Student> {
   const { data, error } = await supabase
     .from('students')
     .select('*')
-    .eq('student_id', id) // 'student_id' ist die Spalte in der DB
+    .eq('student_id', id) // 'student_id' is the column in the DB
     .single();
   if (error) throw error;
-  return data; // data ist vom Typ Student, wenn kein Fehler auftritt
+  return data; // data is of type Student if no error occurs
 }
 
 export async function createStudent(student: NewStudent): Promise<Student[]> {
-  // NewStudent sollte student_id nicht enthalten, wenn es auto-generiert wird,
-  // oder es sollte optional sein und vom Typ number.
+  // NewStudent should not contain student_id when it is auto-generated,
+  // or it should be optional and of type number.
   const { data, error } = await supabase
     .from('students')
     .insert([student])
@@ -36,11 +36,11 @@ export async function createStudent(student: NewStudent): Promise<Student[]> {
 }
 
 export async function updateStudent(id: number, updates: StudentUpdate): Promise<Student[]> {
-  // StudentUpdate sollte student_id optional oder nicht enthalten, da es nicht über updates geändert wird.
+  // StudentUpdate should have student_id optional or omitted since it is not changed via updates.
   const { data, error } = await supabase
     .from('students')
     .update(updates)
-    .eq('student_id', id) // 'student_id' ist die Spalte in der DB
+    .eq('student_id', id) // 'student_id' is the column in the DB
     .select();
   if (error) throw error;
   return data || [];
@@ -50,6 +50,6 @@ export async function deleteStudent(id: number): Promise<void> {
   const { error } = await supabase
     .from('students')
     .delete()
-    .eq('student_id', id); // 'student_id' ist die Spalte in der DB
+    .eq('student_id', id); // 'student_id' is the column in the DB
   if (error) throw error;
 }

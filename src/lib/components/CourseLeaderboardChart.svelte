@@ -118,9 +118,9 @@
 				.sort((a, b) => b.averageGpa - a.averageGpa)
 				.slice(0, 5);
 
-		} catch (e: any) {
-			console.error("Fehler beim Laden der Leaderboard-Daten:", e);
-			error = e.message || "Fehler beim Laden der Leaderboard-Daten.";
+                } catch (e: any) {
+                        console.error("Error loading leaderboard data:", e);
+                        error = e.message || "Error loading leaderboard data.";
 			leaderboard = [];
 		} finally {
 			isLoading = false;
@@ -130,12 +130,12 @@
 
 <div class="course-leaderboard bg-white shadow-md rounded-lg p-6">
 	<h3 class="text-xl font-semibold text-gray-700 mb-4">Top 5 Studenten</h3>
-	{#if isLoading}
-		<p class="text-gray-500">Leaderboard wird geladen...</p>
-	{:else if error}
-		<p class="text-red-500">Fehler: {error}</p>
-	{:else if leaderboard.length === 0}
-		<p class="text-gray-500">Keine Studentendaten für das Leaderboard verfügbar.</p>
+        {#if isLoading}
+                <p class="text-gray-500">Loading leaderboard...</p>
+        {:else if error}
+                <p class="text-red-500">Error: {error}</p>
+        {:else if leaderboard.length === 0}
+                <p class="text-gray-500">No student data available for the leaderboard.</p>
 	{:else}
 		<ol class="space-y-3">
 			{#each leaderboard as student, i (student.studentId)}
@@ -154,5 +154,5 @@
 </div>
 
 <style>
-    /* Stil-Anpassungen können hier vorgenommen werden, falls nötig */
+    /* Styling adjustments can be made here if necessary */
 </style>

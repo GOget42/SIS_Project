@@ -5,14 +5,14 @@ import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Session, User } from '@supabase/supabase-js';
 
-// Definiere benutzerdefinierte Typen für event.locals
+// Define custom types for event.locals
 declare global {
 	namespace App {
 		interface Locals {
 			supabase: ReturnType<typeof createServerClient>;
 			session: Session | null;
 			user: User | null;
-			getSession: () => Promise<Session | null>; // Hinzugefügt für getSession
+                        getSession: () => Promise<Session | null>; // Added for getSession
 		}
 		// interface PageData {}
 		// interface Error {}
@@ -22,7 +22,7 @@ declare global {
 
 export const handleError: HandleServerError = ({ error }) => {
 	console.error('Error occurred:', error);
-	// event wurde entfernt, da es nicht verwendet wurde
+        // event was removed because it was unused
 	return { message: 'Something went wrong' };
 };
 
@@ -83,7 +83,7 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 			} else if (user) {
 				event.locals.user = user;
 			} else {
-				// getUser gab keinen Fehler zurück, aber der Benutzer ist null.
+                                // getUser returned no error, but the user is null.
 				console.warn('⚠️ [HOOK] User data is null after getUser() without an error. Clearing session.');
 				event.locals.user = null;
 				event.locals.session = null;
@@ -95,11 +95,11 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 				}
 			}
 		} else {
-			// currentSessionData ist null ODER currentSessionData fehlt access_token
+                        // currentSessionData is null OR currentSessionData is missing access_token
 			event.locals.user = null;
 			event.locals.session = null;
 			if (currentSessionData) {
-				// currentSessionData war vorhanden, aber ungültig (z.B. kein access_token)
+                                // currentSessionData existed but was invalid (e.g., no access_token)
 				console.warn('⚠️ [HOOK] Session data found but was invalid (e.g., no access_token). Clearing session.');
 				const { error: signOutError } = await event.locals.supabase.auth.signOut();
 				if (signOutError) {
@@ -121,7 +121,7 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 		event.locals.session = null;
 		event.locals.user = null;
 
-		// Versuche, Client-seitige Sitzungscookies zu löschen, wenn der Supabase-Client verfügbar ist
+                // Try to clear client-side session cookies if the Supabase client is available
 		if (event.locals.supabase && event.locals.supabase.auth) {
 			console.log('ℹ️ [HOOK] Attempting to clear session due to error during population.');
 			const { error: signOutError } = await event.locals.supabase.auth.signOut();

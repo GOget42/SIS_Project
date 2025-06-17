@@ -10,13 +10,13 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 
 	const { data: deck, error: deckError } = await supabase
 		.from("decks")
-		.select(`*, user_id`) // user_id wird weiterhin selektiert, um den Eigentümer zu kennen
+		.select(`*, user_id`) // keep user_id so we know the owner
 		.eq("flashdeck_id", params.id)
-		// .eq("user_id", session.user.id) // Diese Zeile wird entfernt, um das Laden von Decks anderer Benutzer zu ermöglichen
+		// .eq("user_id", session.user.id) // This line was removed to allow loading decks from other users
 		.single();
 
 	if (deckError || !deck) {
-		// Dies wird nun ausgelöst, wenn das Deck nicht existiert, unabhängig vom Eigentümer
+		// This is now triggered if the deck does not exist, regardless of owner
 		throw error(404, "Deck nicht gefunden.");
 	}
 
@@ -28,14 +28,14 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 
 	if (cardsError) {
 		console.error("Fehler beim Laden der Karten:", cardsError);
-		throw error(500, "Karten konnten nicht geladen werden.");
+		throw error(500, "Cards could not be loaded.");
 	}
 
 	return {
 		deck: deck as Tables<"decks">,
 		cards: cards as Tables<"cards">[],
 		deckId: params.id,
-		isOwner: deck.user_id === session.user.id // Optional: Flag hinzufügen, ob der aktuelle Benutzer der Eigentümer ist
+		isOwner: deck.user_id === session.user.id // Optional flag indicating whether the current user is the owner
 	};
 };
 
@@ -53,7 +53,7 @@ export const actions: Actions = {
 
 		if (!frontContent || !backContent) {
 			return fail(400, {
-				message: "Vorder- und Rückseite dürfen nicht leer sein.",
+				message: "Front and back must not be empty.",
 				success: false,
 				frontContent,
 				backContent,
@@ -73,7 +73,7 @@ export const actions: Actions = {
 
 		if (deckOwner.user_id !== session.user.id) {
 			return fail(403, {
-				message: "Sie sind nicht berechtigt, Karten zu diesem Deck hinzuzufügen.",
+				message: "You are not authorized to add cards to this deck.",
 				success: false,
 			});
 		}
@@ -86,9 +86,9 @@ export const actions: Actions = {
 		});
 
 		if (insertError) {
-			console.error("Fehler beim Erstellen der Karte:", insertError);
+			console.error("Error creating card:", insertError);
 			return fail(500, {
-				message: "Karte konnte nicht erstellt werden: " + insertError.message,
+				message: "Could not create card: " + insertError.message,
 				success: false,
 				frontContent,
 				backContent,
@@ -96,7 +96,7 @@ export const actions: Actions = {
 		}
 
 		return {
-			message: "Karte erfolgreich erstellt!",
+			message: "Card created successfully!",
 			success: true,
 		};
 	},
@@ -111,11 +111,11 @@ export const actions: Actions = {
 		const cardId = formData.get("card_id") as string;
 		const frontContent = formData.get("front_content") as string;
 		const backContent = formData.get("back_content") as string;
-		// const deckId = params.id; // Nicht direkt für die Kartenprüfung benötigt, da die Karte ihre eigene flashdeck_id hat
+		// const deckId = params.id; // Not required directly for card verification since the card has its own flashdeck_id
 
 		if (!cardId || !frontContent || !backContent) {
 			return fail(400, {
-				message: "Karten-ID, Vorder- und Rückseite sind erforderlich.",
+				message: "Card ID, front and back are required.",
 				success: false,
 				cardId,
 				frontContent,
@@ -131,20 +131,20 @@ export const actions: Actions = {
 			.single();
 
 		if (cardError || !card) {
-			return fail(404, { message: "Karte nicht gefunden.", success: false, cardId });
+			return fail(404, { message: "Card not found.", success: false, cardId });
 		}
 
 		if (card.user_id !== session.user.id) {
 			return fail(403, {
-				message: "Sie sind nicht berechtigt, diese Karte zu bearbeiten.",
+				message: "You are not authorized to edit this card.",
 				success: false,
 				cardId,
 			});
 		}
-		// Optional: Zusätzliche Prüfung, ob die Karte zum aktuellen Deck gehört, falls params.id relevant ist
+		// Optional extra check to ensure the card belongs to the current deck if params.id is relevant
 		if (card.flashdeck_id !== params.id) {
 			return fail(403, {
-				message: "Diese Karte gehört nicht zum aktuell angezeigten Deck.",
+				message: "This card does not belong to the currently displayed deck.",
 				success: false,
 				cardId,
 			});
@@ -159,7 +159,7 @@ export const actions: Actions = {
 		if (updateError) {
 			console.error("Fehler beim Aktualisieren der Karte:", updateError);
 			return fail(500, {
-				message: "Karte konnte nicht aktualisiert werden: " + updateError.message,
+				message: "Could not update card: " + updateError.message,
 				success: false,
 				cardId,
 				frontContent,
@@ -168,7 +168,7 @@ export const actions: Actions = {
 		}
 
 		return {
-			message: "Karte erfolgreich aktualisiert!",
+			message: "Card updated successfully!",
 			success: true,
 			updatedCardId: cardId,
 		};
@@ -201,14 +201,14 @@ export const actions: Actions = {
 
 		if (card.user_id !== session.user.id) {
 			return fail(403, {
-				message: "Sie sind nicht berechtigt, diese Karte zu löschen.",
+				message: "You are not authorized to delete this card.",
 				success: false,
 			});
 		}
-		// Optional: Zusätzliche Prüfung
+		// Optional additional check
 		if (card.flashdeck_id !== params.id) {
 			return fail(403, {
-				message: "Diese Karte gehört nicht zum aktuell angezeigten Deck und kann hier nicht gelöscht werden.",
+				message: "This card does not belong to the currently displayed deck and cannot be deleted here.",
 				success: false,
 			});
 		}
@@ -216,15 +216,15 @@ export const actions: Actions = {
 		const { error: deleteError } = await supabase.from("cards").delete().eq("card_id", cardId);
 
 		if (deleteError) {
-			console.error("Fehler beim Löschen der Karte:", deleteError);
+			console.error("Error deleting card:", deleteError);
 			return fail(500, {
-				message: "Karte konnte nicht gelöscht werden: " + deleteError.message,
+				message: "Could not delete card: " + deleteError.message,
 				success: false,
 			});
 		}
 
 		return {
-			message: "Karte erfolgreich gelöscht!",
+			message: "Card deleted successfully!",
 			success: true,
 			deletedCardId: cardId,
 		};

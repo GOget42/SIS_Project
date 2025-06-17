@@ -6,11 +6,11 @@ declare global {
 		interface Locals {
 			supabase: SupabaseClient;
 			session: Session | null;
-			user: User | null; // Hinzufügen für event.locals.user
+                        user: User | null; // Added for event.locals.user
 		}
 		interface PageData {
-			session?: Session | null; // Optional: wenn Sie die Session an PageData übergeben
-			user?: User | null;    // Optional: wenn Sie den Benutzer an PageData übergeben
+                        session?: Session | null; // Optional if you pass the session to PageData
+                        user?: User | null;    // Optional if you pass the user to PageData
 		}
 		// interface Error {}
 		// interface Platform {}

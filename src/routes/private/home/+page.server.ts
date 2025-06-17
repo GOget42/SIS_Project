@@ -151,7 +151,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 												dueDate: sa.due_date,
 												courseId: course.course_id,
 												courseName: course.course_name,
-												enrollment_id: enrollment.enrollment_id // Nicht direkt für unique key gebraucht, aber für Kontext
+                                                                               enrollment_id: enrollment.enrollment_id // Not used directly for the unique key, but kept for context
 											});
 										}
 									}
@@ -202,7 +202,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				profile = { first_name: user.email?.split('@')[0] || 'Admin', email: user.email };
 			}
 
-			// Daten für Admins laden: Systemweite Kursstatistiken
+                        // Load data for admins: system-wide course statistics
 			const { data: allCoursesRaw, error: coursesError } = await locals.supabase
 				.from('courses')
 				.select('course_id, course_name, format, ects, instructor_id, instructors (first_name, last_name)'); // Dozenteninfo mitladen
@@ -285,7 +285,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		user: user,
 		profile: profile,
 		role: role,
-		courses: coursesData, // Enthält jetzt AdminCourseSummary[] für Admins
+                courses: coursesData, // Now contains AdminCourseSummary[] for admins
 		upcomingInstructorAssignments: upcomingInstructorAssignments,
 	};
 };
