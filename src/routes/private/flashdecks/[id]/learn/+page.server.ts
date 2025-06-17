@@ -27,7 +27,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 		.order('created_at', { ascending: true }); // For example, load cards in creation order
 
 	if (cardsError) {
-		console.error("Error loading cards for the learning session:", cardsError);
+		console.error('Error loading cards for the learning session:', cardsError);
 		throw error(500, 'Cards for the learning session could not be loaded.');
 	}
 

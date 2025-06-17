@@ -3,11 +3,11 @@ import { isFormSubmitting, startFormSubmission, endFormSubmission } from './form
 import { get } from 'svelte/store';
 
 describe('formLoadingStore', () => {
-  it('toggles values', () => {
-    expect(get(isFormSubmitting)).toBe(false);
-    startFormSubmission();
-    expect(get(isFormSubmitting)).toBe(true);
-    endFormSubmission();
-    expect(get(isFormSubmitting)).toBe(false);
-  });
+	it('toggles values', () => {
+		expect(get(isFormSubmitting)).toBe(false);
+		startFormSubmission();
+		expect(get(isFormSubmitting)).toBe(true);
+		endFormSubmission();
+		expect(get(isFormSubmitting)).toBe(false);
+	});
 });

@@ -34,7 +34,7 @@
 
 	onMount(async () => {
 		if (!course_id) {
-			error = "Kurs-ID ist erforderlich.";
+			error = 'Kurs-ID ist erforderlich.';
 			isLoading = false;
 			return;
 		}
@@ -67,20 +67,24 @@
 			if (assignmentsError) throw assignmentsError;
 
 			if (!courseAssignmentsData || courseAssignmentsData.length === 0) {
-				leaderboard = enrollmentsData.map(enrollment => ({
-					studentId: enrollment.students.student_id,
-					name: `${enrollment.students.first_name} ${enrollment.students.last_name}`,
-					averageGpa: 0,
-				})).sort((a,b) => a.name.localeCompare(b.name))
-					.slice(0,5);
+				leaderboard = enrollmentsData
+					.map((enrollment) => ({
+						studentId: enrollment.students.student_id,
+						name: `${enrollment.students.first_name} ${enrollment.students.last_name}`,
+						averageGpa: 0
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name))
+					.slice(0, 5);
 				isLoading = false;
 				return;
 			}
 
-			const assignmentWeights = new Map(courseAssignmentsData.map(a => [a.assignment_id, a.weight as number]));
-			const assignmentIds = courseAssignmentsData.map(a => a.assignment_id);
+			const assignmentWeights = new Map(
+				courseAssignmentsData.map((a) => [a.assignment_id, a.weight as number])
+			);
+			const assignmentIds = courseAssignmentsData.map((a) => a.assignment_id);
 
-			const enrollmentIds = enrollmentsData.map(e => e.enrollment_id);
+			const enrollmentIds = enrollmentsData.map((e) => e.enrollment_id);
 			const { data: studentGradesData, error: gradesError } = await supabase
 				.from('student_grades')
 				.select('enrollment_id, assignment_id, grade')
@@ -92,12 +96,13 @@
 
 			const studentData = enrollmentsData.map((enrollment) => {
 				const student = enrollment.students;
-				const gradesForStudent = studentGradesData?.filter(sg => sg.enrollment_id === enrollment.enrollment_id) || [];
+				const gradesForStudent =
+					studentGradesData?.filter((sg) => sg.enrollment_id === enrollment.enrollment_id) || [];
 
 				let totalWeightedScore = 0;
 				let totalEffectiveWeight = 0;
 
-				gradesForStudent.forEach(sg => {
+				gradesForStudent.forEach((sg) => {
 					const weight = assignmentWeights.get(sg.assignment_id);
 					if (sg.grade !== null && weight !== undefined && weight > 0) {
 						totalWeightedScore += (sg.grade as number) * weight;
@@ -110,17 +115,14 @@
 				return {
 					studentId: student.student_id,
 					name: `${student.first_name} ${student.last_name}`,
-					averageGpa,
+					averageGpa
 				};
 			});
 
-			leaderboard = studentData
-				.sort((a, b) => b.averageGpa - a.averageGpa)
-				.slice(0, 5);
-
-                } catch (e: any) {
-                        console.error("Error loading leaderboard data:", e);
-                        error = e.message || "Error loading leaderboard data.";
+			leaderboard = studentData.sort((a, b) => b.averageGpa - a.averageGpa).slice(0, 5);
+		} catch (e: any) {
+			console.error('Error loading leaderboard data:', e);
+			error = e.message || 'Error loading leaderboard data.';
 			leaderboard = [];
 		} finally {
 			isLoading = false;
@@ -128,25 +130,27 @@
 	}
 </script>
 
-<div class="course-leaderboard bg-white shadow-md rounded-lg p-6">
-	<h3 class="text-xl font-semibold text-gray-700 mb-4">Top 5 Studenten</h3>
-        {#if isLoading}
-                <p class="text-gray-500">Loading leaderboard...</p>
-        {:else if error}
-                <p class="text-red-500">Error: {error}</p>
-        {:else if leaderboard.length === 0}
-                <p class="text-gray-500">No student data available for the leaderboard.</p>
+<div class="course-leaderboard rounded-lg bg-white p-6 shadow-md">
+	<h3 class="mb-4 text-xl font-semibold text-gray-700">Top 5 Studenten</h3>
+	{#if isLoading}
+		<p class="text-gray-500">Loading leaderboard...</p>
+	{:else if error}
+		<p class="text-red-500">Error: {error}</p>
+	{:else if leaderboard.length === 0}
+		<p class="text-gray-500">No student data available for the leaderboard.</p>
 	{:else}
 		<ol class="space-y-3">
 			{#each leaderboard as student, i (student.studentId)}
-				<li class="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+				<li
+					class="flex items-center justify-between rounded-md bg-gray-50 p-3 transition-colors hover:bg-gray-100"
+				>
 					<div class="flex items-center">
-						<span class="text-2xl w-8 text-center">{getRankIcon(i + 1)}</span>
+						<span class="w-8 text-center text-2xl">{getRankIcon(i + 1)}</span>
 						<span class="ml-3 font-medium text-gray-700">{i + 1}. {student.name}</span>
 					</div>
-					<span class="text-sm font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-            GPA: {student.averageGpa.toFixed(2)}
-          </span>
+					<span class="rounded-full bg-blue-100 px-2 py-1 text-sm font-semibold text-blue-600">
+						GPA: {student.averageGpa.toFixed(2)}
+					</span>
 				</li>
 			{/each}
 		</ol>
@@ -154,5 +158,5 @@
 </div>
 
 <style>
-    /* Styling adjustments can be made here if necessary */
+	/* Styling adjustments can be made here if necessary */
 </style>

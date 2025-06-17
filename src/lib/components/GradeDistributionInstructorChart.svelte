@@ -52,10 +52,14 @@
 			.eq('course_id', courseIdNum);
 
 		if (assignmentsError || !courseAssignmentsWithWeight) {
-			throw new Error(`Failed to fetch assignment weights for course ${courseIdNum}: ${assignmentsError?.message}`);
+			throw new Error(
+				`Failed to fetch assignment weights for course ${courseIdNum}: ${assignmentsError?.message}`
+			);
 		}
 
-		const usableAssignments = courseAssignmentsWithWeight.filter(a => typeof a.weight === 'number' && a.weight > 0 && a.assignment_id);
+		const usableAssignments = courseAssignmentsWithWeight.filter(
+			(a) => typeof a.weight === 'number' && a.weight > 0 && a.assignment_id
+		);
 
 		if (usableAssignments.length === 0) {
 			chartDisplayData = { labels: [], data: [] };
@@ -68,7 +72,10 @@
 			.select('enrollment_id')
 			.eq('course_id', courseIdNum);
 
-		if (enrollmentsError) throw new Error(`Failed to fetch enrollments for course ${courseIdNum}: ${enrollmentsError.message}`);
+		if (enrollmentsError)
+			throw new Error(
+				`Failed to fetch enrollments for course ${courseIdNum}: ${enrollmentsError.message}`
+			);
 		if (!enrollments || enrollments.length === 0) {
 			errorMsg = 'No students enrolled in this course.';
 			chartDisplayData = { labels: [], data: [] };
@@ -82,10 +89,15 @@
 				.from('student_grades')
 				.select('assignment_id, grade')
 				.eq('enrollment_id', enrollment.enrollment_id)
-				.in('assignment_id', usableAssignments.map(a => a.assignment_id));
+				.in(
+					'assignment_id',
+					usableAssignments.map((a) => a.assignment_id)
+				);
 
 			if (gradesError) {
-				console.warn(`Could not fetch grades for enrollment ${enrollment.enrollment_id} in course ${courseIdNum}: ${gradesError.message}`);
+				console.warn(
+					`Could not fetch grades for enrollment ${enrollment.enrollment_id} in course ${courseIdNum}: ${gradesError.message}`
+				);
 				continue;
 			}
 
@@ -93,7 +105,7 @@
 			let totalWeight = 0;
 			if (studentGrades && studentGrades.length > 0) {
 				for (const ca of usableAssignments) {
-					const gradeEntry = studentGrades.find(sg => sg.assignment_id === ca.assignment_id);
+					const gradeEntry = studentGrades.find((sg) => sg.assignment_id === ca.assignment_id);
 					if (gradeEntry && typeof gradeEntry.grade === 'number' && ca.weight && ca.weight > 0) {
 						totalWeightedGrade += gradeEntry.grade * ca.weight;
 						totalWeight += ca.weight;
@@ -106,14 +118,15 @@
 		}
 
 		if (studentFinalGrades.length === 0) {
-			errorMsg = 'No final student grades could be calculated for this course with the available data.';
+			errorMsg =
+				'No final student grades could be calculated for this course with the available data.';
 			chartDisplayData = { labels: [], data: [] };
 			averageGradeDisplay = 'N/A';
 			return;
 		}
 
 		const gradeCounts: { [key: string]: number } = {};
-		studentFinalGrades.forEach(grade => {
+		studentFinalGrades.forEach((grade) => {
 			const roundedGrade = roundToNearestQuarter(grade);
 			const bin = roundedGrade.toFixed(2);
 			gradeCounts[bin] = (gradeCounts[bin] || 0) + 1;
@@ -122,13 +135,16 @@
 		const sortedBins = Object.keys(gradeCounts).sort((a, b) => parseFloat(a) - parseFloat(b));
 		chartDisplayData = {
 			labels: sortedBins,
-			data: sortedBins.map(bin => gradeCounts[bin])
+			data: sortedBins.map((bin) => gradeCounts[bin])
 		};
 		const sumOfGrades = studentFinalGrades.reduce((acc, grade) => acc + grade, 0);
 		averageGradeDisplay = (sumOfGrades / studentFinalGrades.length).toFixed(2);
 	}
 
-	async function fetchOverallInstructorDistribution(instructorIdNum: number, currentCourses: { course_id: string; course_name: string }[]) {
+	async function fetchOverallInstructorDistribution(
+		instructorIdNum: number,
+		currentCourses: { course_id: string; course_name: string }[]
+	) {
 		chartDisplayData = null;
 		averageGradeDisplay = null;
 		let allStudentFinalGradesAcrossCourses: number[] = [];
@@ -143,10 +159,14 @@
 				.eq('course_id', courseIdNumForLoop);
 
 			if (assignmentsError || !courseAssignmentsWithWeight) {
-				console.warn(`Failed to fetch assignment weights for course ${course.course_name}: ${assignmentsError?.message}`);
+				console.warn(
+					`Failed to fetch assignment weights for course ${course.course_name}: ${assignmentsError?.message}`
+				);
 				continue;
 			}
-			const usableAssignments = courseAssignmentsWithWeight.filter(a => typeof a.weight === 'number' && a.weight > 0 && a.assignment_id);
+			const usableAssignments = courseAssignmentsWithWeight.filter(
+				(a) => typeof a.weight === 'number' && a.weight > 0 && a.assignment_id
+			);
 			if (usableAssignments.length === 0) continue;
 
 			const { data: enrollments, error: enrollmentsError } = await supabase
@@ -155,7 +175,9 @@
 				.eq('course_id', courseIdNumForLoop);
 
 			if (enrollmentsError || !enrollments || enrollments.length === 0) {
-				console.warn(`Failed to fetch enrollments or no enrollments for course ${course.course_name}: ${enrollmentsError?.message}`);
+				console.warn(
+					`Failed to fetch enrollments or no enrollments for course ${course.course_name}: ${enrollmentsError?.message}`
+				);
 				continue;
 			}
 
@@ -164,10 +186,15 @@
 					.from('student_grades')
 					.select('assignment_id, grade')
 					.eq('enrollment_id', enrollment.enrollment_id)
-					.in('assignment_id', usableAssignments.map(a => a.assignment_id));
+					.in(
+						'assignment_id',
+						usableAssignments.map((a) => a.assignment_id)
+					);
 
 				if (gradesError) {
-					console.warn(`Could not fetch grades for enrollment ${enrollment.enrollment_id} in course ${course.course_name}: ${gradesError.message}`);
+					console.warn(
+						`Could not fetch grades for enrollment ${enrollment.enrollment_id} in course ${course.course_name}: ${gradesError.message}`
+					);
 					continue;
 				}
 
@@ -175,7 +202,7 @@
 				let totalWeight = 0;
 				if (studentGrades && studentGrades.length > 0) {
 					for (const ca of usableAssignments) {
-						const gradeEntry = studentGrades.find(sg => sg.assignment_id === ca.assignment_id);
+						const gradeEntry = studentGrades.find((sg) => sg.assignment_id === ca.assignment_id);
 						if (gradeEntry && typeof gradeEntry.grade === 'number' && ca.weight && ca.weight > 0) {
 							totalWeightedGrade += gradeEntry.grade * ca.weight;
 							totalWeight += ca.weight;
@@ -189,14 +216,15 @@
 		}
 
 		if (allStudentFinalGradesAcrossCourses.length === 0) {
-			errorMsg = 'No final student grades could be calculated across all courses with the available data.';
+			errorMsg =
+				'No final student grades could be calculated across all courses with the available data.';
 			chartDisplayData = { labels: [], data: [] };
 			averageGradeDisplay = 'N/A';
 			return;
 		}
 
 		const gradeCounts: { [key: string]: number } = {};
-		allStudentFinalGradesAcrossCourses.forEach(grade => {
+		allStudentFinalGradesAcrossCourses.forEach((grade) => {
 			const roundedGrade = roundToNearestQuarter(grade);
 			const bin = roundedGrade.toFixed(2);
 			gradeCounts[bin] = (gradeCounts[bin] || 0) + 1;
@@ -205,12 +233,11 @@
 		const sortedBins = Object.keys(gradeCounts).sort((a, b) => parseFloat(a) - parseFloat(b));
 		chartDisplayData = {
 			labels: sortedBins,
-			data: sortedBins.map(bin => gradeCounts[bin])
+			data: sortedBins.map((bin) => gradeCounts[bin])
 		};
 		const sumOfGrades = allStudentFinalGradesAcrossCourses.reduce((acc, grade) => acc + grade, 0);
 		averageGradeDisplay = (sumOfGrades / allStudentFinalGradesAcrossCourses.length).toFixed(2);
 	}
-
 
 	async function fetchData() {
 		if (!currentInstructorIdInternal) {
@@ -279,7 +306,7 @@
 		if (selectedView === 'overallInstructor') {
 			title = 'Overall Instructor Performance';
 		} else {
-			const selectedCourse = coursesList.find(c => c.course_id === selectedView);
+			const selectedCourse = coursesList.find((c) => c.course_id === selectedView);
 			if (selectedCourse) {
 				title = `${selectedCourse.course_name} - Grade Distribution`;
 			} else {
@@ -287,9 +314,22 @@
 			}
 		}
 
-		if (averageGradeDisplay && averageGradeDisplay !== 'N/A' && !isLoading && !errorMsg && chartDisplayData && chartDisplayData.labels.length > 0) {
+		if (
+			averageGradeDisplay &&
+			averageGradeDisplay !== 'N/A' &&
+			!isLoading &&
+			!errorMsg &&
+			chartDisplayData &&
+			chartDisplayData.labels.length > 0
+		) {
 			title += ` (Avg: ${averageGradeDisplay})`;
-		} else if (averageGradeDisplay === 'N/A' && !isLoading && !errorMsg && chartDisplayData && chartDisplayData.labels.length > 0) {
+		} else if (
+			averageGradeDisplay === 'N/A' &&
+			!isLoading &&
+			!errorMsg &&
+			chartDisplayData &&
+			chartDisplayData.labels.length > 0
+		) {
 			title += ` (Avg: N/A)`;
 		}
 		return title;
@@ -322,13 +362,15 @@
 			type: 'bar',
 			data: {
 				labels: chartDisplayData.labels,
-				datasets: [{
-					label: 'Number of Students/Grades',
-					data: chartDisplayData.data,
-					backgroundColor: colors.backgrounds,
-					borderColor: colors.borders,
-					borderWidth: 1
-				}]
+				datasets: [
+					{
+						label: 'Number of Students/Grades',
+						data: chartDisplayData.data,
+						backgroundColor: colors.backgrounds,
+						borderColor: colors.borders,
+						borderWidth: 1
+					}
+				]
 			},
 			options: {
 				responsive: true,
@@ -339,10 +381,15 @@
 				},
 				plugins: {
 					legend: { display: false },
-					title: { display: true, text: getChartTitle(), font: { size: 16, weight: 'bold' }, padding: { top: 10, bottom: 20 } },
+					title: {
+						display: true,
+						text: getChartTitle(),
+						font: { size: 16, weight: 'bold' },
+						padding: { top: 10, bottom: 20 }
+					},
 					tooltip: {
 						callbacks: {
-							label: function(context: TooltipItem<'bar'>) {
+							label: function (context: TooltipItem<'bar'>) {
 								let countLabel = context.dataset.label || 'Count';
 								if (context.parsed.y !== null) {
 									const binLabel = parseFloat(context.label).toFixed(2);
@@ -363,7 +410,7 @@
 			fetchData();
 		} else {
 			isLoading = false;
-			errorMsg = "Instructor ID not provided on mount.";
+			errorMsg = 'Instructor ID not provided on mount.';
 		}
 	});
 
@@ -385,15 +432,24 @@
 	function handleViewChange() {
 		errorMsg = null; // Clear previous error messages on view change
 		// chartDisplayData and averageGradeDisplay are reset in fetchData
-		if (currentInstructorIdInternal) { // Ensure instructor ID is set
+		if (currentInstructorIdInternal) {
+			// Ensure instructor ID is set
 			fetchData();
 		}
 	}
 
 	$: {
-		if (chartCanvas && !isLoading && !showNoCoursesMessage && !errorMsg && chartDisplayData && chartDisplayData.labels.length > 0) {
+		if (
+			chartCanvas &&
+			!isLoading &&
+			!showNoCoursesMessage &&
+			!errorMsg &&
+			chartDisplayData &&
+			chartDisplayData.labels.length > 0
+		) {
 			renderChart();
-		} else if (distributionChart) { // If chart exists but shouldn't be shown, destroy it and clear canvas
+		} else if (distributionChart) {
+			// If chart exists but shouldn't be shown, destroy it and clear canvas
 			destroyChart();
 			if (chartCanvas) {
 				const ctx = chartCanvas.getContext('2d');
@@ -401,17 +457,26 @@
 			}
 		}
 	}
-
 </script>
 
-<div class="p-1 h-full">
-	<div class="flex flex-col h-96 bg-white shadow-lg rounded-lg overflow-hidden">
-		<div class="p-4 bg-gray-50 border-b border-gray-200 flex-shrink-0">
-			<div class="flex flex-col sm:flex-row justify-between items-center">
-				<label for="instructorGradeViewSelect" class="text-md font-semibold text-gray-700 mb-2 sm:mb-0 sm:mr-3">View Distribution For:</label>
-				<select id="instructorGradeViewSelect" bind:value={selectedView} on:change={handleViewChange}
-								class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm w-full sm:w-auto"
-								disabled={isLoading || (showNoCoursesMessage && coursesList.length === 0) || coursesList.length === 0 && !showNoCoursesMessage && !isLoading && !errorMsg}>
+<div class="h-full p-1">
+	<div class="flex h-96 flex-col overflow-hidden rounded-lg bg-white shadow-lg">
+		<div class="flex-shrink-0 border-b border-gray-200 bg-gray-50 p-4">
+			<div class="flex flex-col items-center justify-between sm:flex-row">
+				<label
+					for="instructorGradeViewSelect"
+					class="text-md mb-2 font-semibold text-gray-700 sm:mr-3 sm:mb-0"
+					>View Distribution For:</label
+				>
+				<select
+					id="instructorGradeViewSelect"
+					bind:value={selectedView}
+					on:change={handleViewChange}
+					class="w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:w-auto sm:text-sm"
+					disabled={isLoading ||
+						(showNoCoursesMessage && coursesList.length === 0) ||
+						(coursesList.length === 0 && !showNoCoursesMessage && !isLoading && !errorMsg)}
+				>
 					<option value="overallInstructor">Overall Instructor Performance</option>
 					{#if coursesList.length > 0}
 						<optgroup label="Individual Courses">
@@ -426,25 +491,38 @@
 			</div>
 		</div>
 
-		<div class="flex-grow p-4 relative">
+		<div class="relative flex-grow p-4">
 			{#if isLoading}
 				<div class="absolute inset-0 flex items-center justify-center">
-					<p class="text-gray-500 text-lg">Loading Grade Distribution...</p>
+					<p class="text-lg text-gray-500">Loading Grade Distribution...</p>
 				</div>
 			{:else if errorMsg}
-				<div class="absolute inset-0 flex items-center justify-center text-center p-2">
+				<div class="absolute inset-0 flex items-center justify-center p-2 text-center">
 					<p class="text-md text-red-500">{errorMsg}</p>
 				</div>
 			{:else if showNoCoursesMessage}
-				<div class="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+				<div class="absolute inset-0 flex flex-col items-center justify-center p-2 text-center">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="mb-2 h-10 w-10 text-blue-400"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
 					</svg>
 					<p class="text-lg font-semibold text-gray-700">No Courses Found</p>
-					<p class="text-sm text-gray-500 mt-1">This instructor is not associated with any courses, or no courses have grade data.</p>
+					<p class="mt-1 text-sm text-gray-500">
+						This instructor is not associated with any courses, or no courses have grade data.
+					</p>
 				</div>
 			{:else if !chartDisplayData || chartDisplayData.labels.length === 0}
-				<div class="absolute inset-0 flex items-center justify-center text-center p-2">
+				<div class="absolute inset-0 flex items-center justify-center p-2 text-center">
 					<p class="text-md text-gray-500">No grade data available for this view.</p>
 				</div>
 			{:else}
@@ -453,4 +531,3 @@
 		</div>
 	</div>
 </div>
-

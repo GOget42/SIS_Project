@@ -17,7 +17,12 @@
 	$: ({ deck, cards, isOwner } = data); // isOwner added, if needed
 
 	// Reset form fields on successful card creation
-	$: if (form?.success && form.message?.includes('created') && !form.updatedCardId && !form.deletedCardId) {
+	$: if (
+		form?.success &&
+		form.message?.includes('created') &&
+		!form.updatedCardId &&
+		!form.deletedCardId
+	) {
 		frontContent = '';
 		backContent = '';
 	}
@@ -40,19 +45,19 @@
 </script>
 
 <div class="container mx-auto p-4">
-	<a href="/private/flashdecks" class="text-blue-500 hover:underline mb-6 inline-block"
-	>&larr; Back to Decks</a
+	<a href="/private/flashdecks" class="mb-6 inline-block text-blue-500 hover:underline"
+		>&larr; Back to Decks</a
 	>
 	{#if deck}
-		<h1 class="text-3xl font-bold mb-2">{deck.name}</h1>
-		<p class="text-gray-600 mb-6">{deck.description || 'No description available.'}</p>
+		<h1 class="mb-2 text-3xl font-bold">{deck.name}</h1>
+		<p class="mb-6 text-gray-600">{deck.description || 'No description available.'}</p>
 
 		<!-- Learn Button -->
 		{#if cards && cards.length > 0}
 			<div class="my-6">
 				<a
 					href="/private/flashdecks/{deck.flashdeck_id}/learn"
-					class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+					class="focus:shadow-outline rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700 focus:outline-none"
 				>
 					Learn Deck ({cards.length} cards)
 				</a>
@@ -62,49 +67,51 @@
 		<!-- Only show if the user is the owner of the deck -->
 		{#if isOwner}
 			<section class="mb-8">
-				<h2 class="text-2xl font-semibold mb-4">Add New Card</h2>
+				<h2 class="mb-4 text-2xl font-semibold">Add New Card</h2>
 				<form
 					method="POST"
 					action="?/createCard"
 					use:enhance={() => {
-      return async ({ update }) => {
-       await update({ reset: false });
-      };
-     }}
-					class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+						return async ({ update }) => {
+							await update({ reset: false });
+						};
+					}}
+					class="mb-4 rounded bg-white px-8 pt-6 pb-8 shadow-md"
 				>
 					{#if form?.message && !form.updatedCardId && !form.deletedCardId && !('cardId' in form)}
-						<p class="{form.success ? 'text-green-500' : 'text-red-500'} text-xs italic mb-4">{form.message}</p>
+						<p class="{form.success ? 'text-green-500' : 'text-red-500'} mb-4 text-xs italic">
+							{form.message}
+						</p>
 					{/if}
 					<div class="mb-4">
-						<label class="block text-gray-700 text-sm font-bold mb-2" for="front_content">
+						<label class="mb-2 block text-sm font-bold text-gray-700" for="front_content">
 							Front
 						</label>
 						<textarea
 							id="front_content"
 							name="front_content"
 							bind:value={frontContent}
-							class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+							class="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
 							rows="3"
 							required
 						></textarea>
 					</div>
 					<div class="mb-6">
-						<label class="block text-gray-700 text-sm font-bold mb-2" for="back_content">
+						<label class="mb-2 block text-sm font-bold text-gray-700" for="back_content">
 							Back
 						</label>
 						<textarea
 							id="back_content"
 							name="back_content"
 							bind:value={backContent}
-							class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
+							class="focus:shadow-outline mb-3 w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
 							rows="3"
 							required
 						></textarea>
 					</div>
 					<div class="flex items-center justify-between">
 						<button
-							class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+							class="focus:shadow-outline rounded bg-blue-500 px-4 py-2 font-bold text-white hover:bg-blue-700 focus:outline-none"
 							type="submit"
 						>
 							Create Card
@@ -115,30 +122,33 @@
 		{/if}
 
 		<section>
-			<h2 class="text-2xl font-semibold mb-4">Cards in Deck ({cards?.length || 0})</h2>
+			<h2 class="mb-4 text-2xl font-semibold">Cards in Deck ({cards?.length || 0})</h2>
 			{#if form?.message && (form.updatedCardId || form.deletedCardId)}
-				<p class="{form.success ? 'text-green-500' : 'text-red-500'} text-xs italic mb-4">{form.message}</p>
+				<p class="{form.success ? 'text-green-500' : 'text-red-500'} mb-4 text-xs italic">
+					{form.message}
+				</p>
 			{/if}
 
 			{#if cards && cards.length > 0}
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each cards as card (card.card_id)}
-						<div class="bg-white shadow-lg rounded-lg p-6 flex flex-col justify-between">
-							{#if editingCardId === card.card_id && isOwner}  <!-- Editing only for owner of the card/deck -->
+						<div class="flex flex-col justify-between rounded-lg bg-white p-6 shadow-lg">
+							{#if editingCardId === card.card_id && isOwner}
+								<!-- Editing only for owner of the card/deck -->
 								<form
 									method="POST"
 									action="?/updateCard"
 									use:enhance={() => {
-          return async ({ update }) => {
-           await update({ reset: false });
-          };
-         }}
-									class="flex flex-col h-full"
+										return async ({ update }) => {
+											await update({ reset: false });
+										};
+									}}
+									class="flex h-full flex-col"
 								>
 									<input type="hidden" name="card_id" value={card.card_id} />
 									<div class="mb-4">
 										<label
-											class="block text-gray-700 text-sm font-bold mb-1"
+											class="mb-1 block text-sm font-bold text-gray-700"
 											for="edit_front_content_{card.card_id}"
 										>
 											Front
@@ -147,14 +157,14 @@
 											id="edit_front_content_{card.card_id}"
 											name="front_content"
 											bind:value={editFrontContent}
-											class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+											class="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
 											rows="3"
 											required
 										></textarea>
 									</div>
 									<div class="mb-4">
 										<label
-											class="block text-gray-700 text-sm font-bold mb-1"
+											class="mb-1 block text-sm font-bold text-gray-700"
 											for="edit_back_content_{card.card_id}"
 										>
 											Back
@@ -163,25 +173,25 @@
 											id="edit_back_content_{card.card_id}"
 											name="back_content"
 											bind:value={editBackContent}
-											class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+											class="focus:shadow-outline w-full appearance-none rounded border px-3 py-2 leading-tight text-gray-700 shadow focus:outline-none"
 											rows="3"
 											required
 										></textarea>
 									</div>
 									<!-- Error handling for the specific card in edit mode -->
 									{#if form?.message && !form.success && 'cardId' in form && form.cardId === card.card_id}
-										<p class="text-red-500 text-xs italic mb-2">{form.message}</p>
+										<p class="mb-2 text-xs text-red-500 italic">{form.message}</p>
 									{/if}
-									<div class="flex items-center justify-end space-x-2 mt-auto">
+									<div class="mt-auto flex items-center justify-end space-x-2">
 										<button
 											type="button"
 											on:click={cancelEdit}
-											class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+											class="focus:shadow-outline rounded bg-gray-300 px-4 py-2 font-bold text-gray-800 hover:bg-gray-400 focus:outline-none"
 										>
 											Cancel
 										</button>
 										<button
-											class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+											class="focus:shadow-outline rounded bg-green-500 px-4 py-2 font-bold text-white hover:bg-green-700 focus:outline-none"
 											type="submit"
 										>
 											Save
@@ -192,15 +202,15 @@
 								<div>
 									<div class="mb-4">
 										<h3 class="text-lg font-semibold text-gray-800">Front:</h3>
-										<p class="text-gray-700 whitespace-pre-wrap">{card.front_content}</p>
+										<p class="whitespace-pre-wrap text-gray-700">{card.front_content}</p>
 									</div>
 									<div>
 										<h3 class="text-lg font-semibold text-gray-800">Back:</h3>
-										<p class="text-gray-700 whitespace-pre-wrap">{card.back_content}</p>
+										<p class="whitespace-pre-wrap text-gray-700">{card.back_content}</p>
 									</div>
 								</div>
-								<div class="mt-6 pt-4 border-t border-gray-200">
-									<p class="text-xs text-gray-400 mb-2">
+								<div class="mt-6 border-t border-gray-200 pt-4">
+									<p class="mb-2 text-xs text-gray-400">
 										Created: {new Date(card.created_at).toLocaleDateString()}
 										{#if card.updated_at && new Date(card.updated_at).toISOString() !== new Date(card.created_at).toISOString()}
 											, Updated: {new Date(card.updated_at).toLocaleDateString()}
@@ -211,7 +221,7 @@
 										<div class="flex items-center justify-end space-x-2">
 											<button
 												on:click={() => startEdit(card)}
-												class="text-sm bg-yellow-400 hover:bg-yellow-500 text-white font-semibold py-1 px-3 rounded focus:outline-none focus:shadow-outline"
+												class="focus:shadow-outline rounded bg-yellow-400 px-3 py-1 text-sm font-semibold text-white hover:bg-yellow-500 focus:outline-none"
 											>
 												Edit
 											</button>
@@ -219,19 +229,19 @@
 												method="POST"
 												action="?/deleteCard"
 												use:enhance={({ cancel: cancelSubmission }) => {
-             if (!confirm('Are you sure you want to delete this card?')) {
-              cancelSubmission();
-              return;
-             }
-             return async ({ update }) => {
-              await update({ reset: false });
-             };
-            }}
+													if (!confirm('Are you sure you want to delete this card?')) {
+														cancelSubmission();
+														return;
+													}
+													return async ({ update }) => {
+														await update({ reset: false });
+													};
+												}}
 												class="inline"
 											>
 												<input type="hidden" name="card_id" value={card.card_id} />
 												<button
-													class="text-sm bg-red-500 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded focus:outline-none focus:shadow-outline"
+													class="focus:shadow-outline rounded bg-red-500 px-3 py-1 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none"
 													type="submit"
 												>
 													Delete

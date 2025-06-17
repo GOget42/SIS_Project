@@ -1,5 +1,5 @@
 // supabase/functions/delete-user/index.ts
-import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
+import { serve } from 'https://deno.land/std@0.170.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 
 // 🧩 Environment Variables
@@ -9,13 +9,13 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS', // POST is common for deletions when the body contains user_id
-	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	'Access-Control-Allow-Methods': 'POST, OPTIONS', // POST is common for deletions when the body contains user_id
+	'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 };
 
 const jsonResponseHeaders = {
 	...corsHeaders,
-	'Content-Type': 'application/json',
+	'Content-Type': 'application/json'
 };
 
 serve(async (req: Request) => {
@@ -50,12 +50,15 @@ serve(async (req: Request) => {
 	}
 
 	try {
-                // User ID should be provided in the POST body
+		// User ID should be provided in the POST body
 		if (req.method !== 'POST') {
-			return new Response(JSON.stringify({ error: 'Method not allowed, please use POST with user_id in body' }), {
-				status: 405,
-				headers: jsonResponseHeaders
-			});
+			return new Response(
+				JSON.stringify({ error: 'Method not allowed, please use POST with user_id in body' }),
+				{
+					status: 405,
+					headers: jsonResponseHeaders
+				}
+			);
 		}
 
 		const { user_id } = await req.json();
@@ -73,41 +76,46 @@ serve(async (req: Request) => {
 
 		if (deleteAuthUserError) {
 			console.error('Failed to delete auth user:', deleteAuthUserError.message);
-                        // Possible errors: user not found (may be considered a success if idempotency is desired)
-                        // or other server-side issues.
+			// Possible errors: user not found (may be considered a success if idempotency is desired)
+			// or other server-side issues.
 			if (deleteAuthUserError.message.includes('User not found')) {
 				return new Response(JSON.stringify({ message: 'User not found or already deleted' }), {
-                                        status: 200, // Or 404 depending on the desired semantics
-					headers: jsonResponseHeaders,
+					status: 200, // Or 404 depending on the desired semantics
+					headers: jsonResponseHeaders
 				});
 			}
-			return new Response(JSON.stringify({ error: `Failed to delete user: ${deleteAuthUserError.message}` }), {
-                                status: 500, // Or a more specific status code based on the error
-				headers: jsonResponseHeaders,
-			});
+			return new Response(
+				JSON.stringify({ error: `Failed to delete user: ${deleteAuthUserError.message}` }),
+				{
+					status: 500, // Or a more specific status code based on the error
+					headers: jsonResponseHeaders
+				}
+			);
 		}
 
-                // Note: Related profile entries (students, instructors, admins) are not explicitly deleted here.
-                // This should be handled via DB triggers (ON DELETE CASCADE) or separate logic.
+		// Note: Related profile entries (students, instructors, admins) are not explicitly deleted here.
+		// This should be handled via DB triggers (ON DELETE CASCADE) or separate logic.
 
-		return new Response(JSON.stringify({ message: 'User deleted successfully from authentication system' }), {
-			status: 200,
-			headers: jsonResponseHeaders,
-		});
-
+		return new Response(
+			JSON.stringify({ message: 'User deleted successfully from authentication system' }),
+			{
+				status: 200,
+				headers: jsonResponseHeaders
+			}
+		);
 	} catch (err) {
-                // Catch JSON parsing errors or other unexpected issues
+		// Catch JSON parsing errors or other unexpected issues
 		if (err instanceof SyntaxError) {
 			console.error('JSON Parsing Error:', err.message);
 			return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
 				status: 400,
-				headers: jsonResponseHeaders,
+				headers: jsonResponseHeaders
 			});
 		}
 		console.error('Unexpected Error in delete-user:', err.message, err.stack);
 		return new Response(JSON.stringify({ error: 'Unexpected error occurred' }), {
 			status: 500,
-			headers: jsonResponseHeaders,
+			headers: jsonResponseHeaders
 		});
 	}
 });

@@ -52,7 +52,9 @@
 				allStudentGrades = studentGradesData || [];
 			}
 
-			const courseIds = [...new Set(allEnrollments.map((e) => e.course_id).filter(id => id !== null))] as number[];
+			const courseIds = [
+				...new Set(allEnrollments.map((e) => e.course_id).filter((id) => id !== null))
+			] as number[];
 			let allCourses: Pick<Tables<'courses'>, 'course_id' | 'ects'>[] = [];
 			if (courseIds.length > 0) {
 				// 4. Fetch all relevant courses for ECTS
@@ -66,7 +68,9 @@
 
 			// Process data for each student
 			studentsDisplayData = students.map((student) => {
-				const studentEnrollments = allEnrollments.filter((e) => e.student_id === student.student_id);
+				const studentEnrollments = allEnrollments.filter(
+					(e) => e.student_id === student.student_id
+				);
 				const coursesEnrolledIn = studentEnrollments.length;
 
 				let sumGpa = 0;
@@ -105,7 +109,6 @@
 					finishedEcts: totalFinishedEcts
 				};
 			});
-
 		} catch (e: any) {
 			console.error('Error loading student overview data:', e);
 			errorLoading = e.message || 'An unknown error occurred.';
@@ -147,7 +150,6 @@
 			comparison = -1; // nulls last
 		}
 
-
 		return sortOrder === 'asc' ? comparison : comparison * -1;
 	});
 
@@ -160,12 +162,15 @@
 </script>
 
 <div class="container mx-auto p-4">
-	<h1 class="text-2xl font-bold mb-4">Student Overview</h1>
+	<h1 class="mb-4 text-2xl font-bold">Student Overview</h1>
 
 	{#if loading}
 		<p class="text-center text-gray-500">Loading student data...</p>
 	{:else if errorLoading}
-		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+		<div
+			class="relative rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
+			role="alert"
+		>
 			<strong class="font-bold">Error!</strong>
 			<span class="block sm:inline">{errorLoading}</span>
 		</div>
@@ -175,39 +180,55 @@
 		<div class="overflow-x-auto shadow-md sm:rounded-lg">
 			<table class="min-w-full divide-y divide-gray-200">
 				<thead class="bg-gray-50">
-				<tr>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('fullName')}>
-						Student {getSortIndicator('fullName')}
-					</th>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('coursesEnrolledIn')}>
-						Courses Enrolled {getSortIndicator('coursesEnrolledIn')}
-					</th>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('averageGpa')}>
-						Average GPA {getSortIndicator('averageGpa')}
-					</th>
-					<th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" on:click={() => sortBy('finishedEcts')}>
-						Finished ECTS {getSortIndicator('finishedEcts')}
-					</th>
-				</tr>
-				</thead>
-				<tbody class="bg-white divide-y divide-gray-200">
-				{#each sortedStudentsDisplayData as student (student.id)}
 					<tr>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<div class="text-sm font-medium text-gray-900">{student.fullName}</div>
-							<div class="text-sm text-gray-500">{student.email}</div>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{student.coursesEnrolledIn}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{student.averageGpa !== null ? student.averageGpa.toFixed(1) : 'N/A'}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{student.finishedEcts}
-						</td>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('fullName')}
+						>
+							Student {getSortIndicator('fullName')}
+						</th>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('coursesEnrolledIn')}
+						>
+							Courses Enrolled {getSortIndicator('coursesEnrolledIn')}
+						</th>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('averageGpa')}
+						>
+							Average GPA {getSortIndicator('averageGpa')}
+						</th>
+						<th
+							scope="col"
+							class="cursor-pointer px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+							on:click={() => sortBy('finishedEcts')}
+						>
+							Finished ECTS {getSortIndicator('finishedEcts')}
+						</th>
 					</tr>
-				{/each}
+				</thead>
+				<tbody class="divide-y divide-gray-200 bg-white">
+					{#each sortedStudentsDisplayData as student (student.id)}
+						<tr>
+							<td class="px-6 py-4 whitespace-nowrap">
+								<div class="text-sm font-medium text-gray-900">{student.fullName}</div>
+								<div class="text-sm text-gray-500">{student.email}</div>
+							</td>
+							<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+								{student.coursesEnrolledIn}
+							</td>
+							<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+								{student.averageGpa !== null ? student.averageGpa.toFixed(1) : 'N/A'}
+							</td>
+							<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+								{student.finishedEcts}
+							</td>
+						</tr>
+					{/each}
 				</tbody>
 			</table>
 		</div>
@@ -215,10 +236,10 @@
 </div>
 
 <style>
-    .container {
-        max-width: 1200px;
-    }
-    .cursor-pointer {
-        cursor: pointer;
-    }
+	.container {
+		max-width: 1200px;
+	}
+	.cursor-pointer {
+		cursor: pointer;
+	}
 </style>
