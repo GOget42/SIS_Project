@@ -54,7 +54,6 @@
 
 	$: {
 		staffMember = data.staffMember as StaffMember | null;
-		availableTasks = (data.availableTasks as AvailableTask[]) || [];
 		staffCourseAssignments = (data.assignedCourses as StaffCourseAssignment[]) || [];
 
 		// Bereitet Daten für das StudentsPerCourseChart vor
@@ -72,15 +71,6 @@
 
 		if (form?.success && form.action === '?/assignTask') {
 			// form = null; // Optional: Formular nach Erfolg zurücksetzen
-		}
-	}
-
-	async function handleDeleteStaffMember() {
-		if (
-			staffMember &&
-			confirm('Are you sure you want to delete this staff member? This action cannot be undone.')
-		) {
-			// Logik wird durch Server-Aktion gehandhabt
 		}
 	}
 

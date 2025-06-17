@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { deleteStudent, updateStudent } from '$lib/api/students.ts';
+	import { deleteStudent } from '$lib/api/students.ts';
 	import { deleteAuthUser } from '$lib/api/auth.ts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import ProgressChart from '$lib/components/ProgressChart.svelte';

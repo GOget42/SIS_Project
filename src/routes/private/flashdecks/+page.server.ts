@@ -5,6 +5,11 @@ import type { TablesInsert, Tables } from '$lib/database.types'; // Tables impor
 // Type for decks with creator name
 type DeckWithCreator = Tables<'decks'> & { creator_name: string };
 
+// Define a type for the profile data selected
+type ProfileSelect = Pick<Tables<'students'>, 'user_id' | 'first_name' | 'last_name' | 'email'>;
+type InstructorProfileSelect = Pick<Tables<'instructors'>, 'user_id' | 'first_name' | 'last_name' | 'email'>;
+
+
 export const load: PageServerLoad = async ({ locals: { supabase, getSession } }) => {
 	const session = await getSession();
 	if (!session) {
@@ -26,7 +31,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 	}
 
 	const myDecks: DeckWithCreator[] = myDecksData
-		? myDecksData.map((deck) => ({ ...deck, creator_name: 'You' }))
+		? myDecksData.map((deck: Tables<'decks'>) => ({ ...deck, creator_name: 'You' }))
 		: [];
 
 	// Get other decks created by other users
@@ -43,7 +48,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 
 	let otherDecks: DeckWithCreator[] = [];
 	if (otherDecksData && otherDecksData.length > 0) {
-		const creatorIds = [...new Set(otherDecksData.map((deck) => deck.user_id))];
+		const creatorIds = [...new Set(otherDecksData.map((deck: Tables<'decks'>) => deck.user_id))];
 		const profilesMap = new Map<string, string>();
 
 		// Get profiles of students
@@ -55,7 +60,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 		if (studentProfilesError) {
 			console.warn('Error fetching student profiles:', studentProfilesError.message);
 		} else if (studentProfiles) {
-			studentProfiles.forEach((p) => {
+			studentProfiles.forEach((p: ProfileSelect) => {
 				const name = p.first_name ? `${p.first_name} ${p.last_name || ''}`.trim() : p.email;
 				profilesMap.set(p.user_id, name);
 			});
@@ -70,7 +75,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 		if (instructorProfilesError) {
 			console.warn('Error fetching instructor profiles:', instructorProfilesError.message);
 		} else if (instructorProfiles) {
-			instructorProfiles.forEach((p) => {
+			instructorProfiles.forEach((p: InstructorProfileSelect) => {
 				const instructorName = p.first_name
 					? `${p.first_name} ${p.last_name || ''}`.trim()
 					: p.email;
@@ -88,7 +93,7 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 			});
 		}
 
-		otherDecks = otherDecksData.map((deck) => ({
+		otherDecks = otherDecksData.map((deck: Tables<'decks'>) => ({
 			...deck,
 			creator_name: profilesMap.get(deck.user_id) || 'Admin Account'
 		}));
