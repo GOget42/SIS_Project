@@ -1,4 +1,3 @@
-// src/lib/api/staff.ts
 import type { Database } from '$lib/supabaseClient';
 import { supabase } from '$lib/supabaseClient';
 
@@ -20,12 +19,12 @@ export async function getAllAdmins(): Promise<Admin[]> {
 	return data;
 }
 
-// Assumes 'id' is either an instructor_id or an admin_id
+// `id` should be either an instructor_id or an admin_id
 export async function getStaffById(id: string): Promise<(Admin | Instructor) & { role: string }> {
 	const { data: instructor, error: instructorError } = await supabase
 		.from('instructors')
 		.select('*')
-                .eq('instructor_id', id) // Changed from 'id' to 'instructor_id'
+		.eq('instructor_id', id)
 		.single();
 
 	if (instructor && !instructorError) {
@@ -35,7 +34,7 @@ export async function getStaffById(id: string): Promise<(Admin | Instructor) & {
 	const { data: admin, error: adminError } = await supabase
 		.from('admins')
 		.select('*')
-                .eq('admin_id', id) // Changed from 'id' to 'admin_id'
+		.eq('admin_id', id)
 		.single();
 
 	if (admin && !adminError) {
@@ -46,13 +45,13 @@ export async function getStaffById(id: string): Promise<(Admin | Instructor) & {
 }
 
 export async function updateStaff(
-        id: string, // Should be the admin_id or instructor_id
+	id: string, // admin_id or instructor_id
 	updates: Partial<InstructorUpdate | AdminUpdate>,
 	role: 'admin' | 'instructor'
 ): Promise<Admin[] | Instructor[]> {
 	const table = role === 'admin' ? 'admins' : 'instructors';
 	const idColumn = role === 'admin' ? 'admin_id' : 'instructor_id';
-        const { data, error } = await supabase.from(table).update(updates).eq(idColumn, id); // Dynamic ID column
+	const { data, error } = await supabase.from(table).update(updates).eq(idColumn, id);
 	if (error) throw error;
 	return data;
 }
@@ -60,6 +59,6 @@ export async function updateStaff(
 export async function deleteStaff(id: string, role: 'admin' | 'instructor'): Promise<void> {
 	const table = role === 'admin' ? 'admins' : 'instructors';
 	const idColumn = role === 'admin' ? 'admin_id' : 'instructor_id';
-        const { error } = await supabase.from(table).delete().eq(idColumn, id); // Dynamic ID column
+	const { error } = await supabase.from(table).delete().eq(idColumn, id);
 	if (error) throw error;
 }

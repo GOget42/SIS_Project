@@ -1,4 +1,3 @@
-// src/routes/private/staff/+page.server.ts
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
@@ -8,23 +7,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw redirect(302, '/login');
 	}
 
-	// Sortierparameter aus der URL lesen
+	// Read sorting parameters from the query string
 	const sortByParam = url.searchParams.get('sort_by');
 	const sortOrderParam = url.searchParams.get('sort_order');
 
 	const validSortColumns = ['first_name', 'last_name', 'email'];
-	let sortBy = (sortByParam && validSortColumns.includes(sortByParam)) ? sortByParam : 'last_name'; // Standard-Sortierung
-	let sortOrder : 'asc' | 'desc' = (sortOrderParam === 'desc') ? 'desc' : 'asc';
+	let sortBy = sortByParam && validSortColumns.includes(sortByParam) ? sortByParam : 'last_name'; // Default sorting
+	let sortOrder: 'asc' | 'desc' = sortOrderParam === 'desc' ? 'desc' : 'asc';
 	const ascending = sortOrder === 'asc';
 
-	// Dozenten abrufen und sortieren
+	// Fetch and sort instructors
 	let instructorsQuery = locals.supabase.from('instructors').select('*');
 	if (validSortColumns.includes(sortBy)) {
 		instructorsQuery = instructorsQuery.order(sortBy, { ascending });
 	}
 	const { data: instructors, error: instructorsError } = await instructorsQuery;
 
-	// Admins abrufen und sortieren (gleiche Sortierlogik anwenden)
+	// Fetch and sort admins using the same logic
 	let adminsQuery = locals.supabase.from('admins').select('*');
 	if (validSortColumns.includes(sortBy)) {
 		adminsQuery = adminsQuery.order(sortBy, { ascending });
@@ -56,7 +55,14 @@ export const actions: Actions = {
 		const password = formData.get('password') as string;
 
 		if (!first_name || !last_name || !email || !password) {
-			return fail(400, { error: 'Missing required fields, including password.', first_name, last_name, email, action: '?/createInstructor', success: false });
+			return fail(400, {
+				error: 'Missing required fields, including password.',
+				first_name,
+				last_name,
+				email,
+				action: '?/createInstructor',
+				success: false
+			});
 		}
 
 		const supabaseFunctionUrl = `${PUBLIC_SUPABASE_URL}/functions/v1/create-user`;
@@ -66,7 +72,7 @@ export const actions: Actions = {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${locals.session?.access_token}`
+					Authorization: `Bearer ${locals.session?.access_token}`
 				},
 				body: JSON.stringify({ email, password, role: 'instructor', first_name, last_name })
 			});
@@ -75,10 +81,18 @@ export const actions: Actions = {
 
 			if (!response.ok) {
 				console.error('Error from create-user function (instructor):', data.error);
-				return fail(response.status, { error: data.error || 'Failed to create instructor auth user', action: '?/createInstructor', success: false });
+				return fail(response.status, {
+					error: data.error || 'Failed to create instructor auth user',
+					action: '?/createInstructor',
+					success: false
+				});
 			}
 
-			return { success: true, message: 'Instructor created successfully.', action: '?/createInstructor' };
+			return {
+				success: true,
+				message: 'Instructor created successfully.',
+				action: '?/createInstructor'
+			};
 		} catch (error: unknown) {
 			let message = 'An unexpected error occurred.';
 			if (error instanceof Error) {
@@ -97,7 +111,14 @@ export const actions: Actions = {
 		const password = formData.get('password') as string;
 
 		if (!first_name || !last_name || !email || !password) {
-			return fail(400, { error: 'Missing required fields for admin, including password.', first_name, last_name, email, action: '?/createAdmin', success: false });
+			return fail(400, {
+				error: 'Missing required fields for admin, including password.',
+				first_name,
+				last_name,
+				email,
+				action: '?/createAdmin',
+				success: false
+			});
 		}
 
 		const supabaseFunctionUrl = `${PUBLIC_SUPABASE_URL}/functions/v1/create-user`;
@@ -107,7 +128,7 @@ export const actions: Actions = {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${locals.session?.access_token}`
+					Authorization: `Bearer ${locals.session?.access_token}`
 				},
 				body: JSON.stringify({ email, password, role: 'admin', first_name, last_name })
 			});
@@ -115,7 +136,11 @@ export const actions: Actions = {
 
 			if (!response.ok) {
 				console.error('Error from create-user function (admin):', data.error);
-				return fail(response.status, { error: data.error || 'Failed to create admin auth user', action: '?/createAdmin', success: false });
+				return fail(response.status, {
+					error: data.error || 'Failed to create admin auth user',
+					action: '?/createAdmin',
+					success: false
+				});
 			}
 			return { success: true, message: 'Admin created successfully.', action: '?/createAdmin' };
 		} catch (error: unknown) {
@@ -126,5 +151,5 @@ export const actions: Actions = {
 			console.error('Server create admin error:', message);
 			return fail(500, { error: message, action: '?/createAdmin', success: false });
 		}
-	},
+	}
 };

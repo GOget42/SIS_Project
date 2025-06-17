@@ -15,10 +15,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const sortOrderParam = url.searchParams.get('sort_order');
 
 	const validSortColumns = ['course_name', 'ects', 'format', 'instructor'];
-	const sortBy = (sortByParam && validSortColumns.includes(sortByParam)) ? sortByParam : 'course_name';
-	const sortOrder : 'asc' | 'desc' = (sortOrderParam === 'desc') ? 'desc' : 'asc';
+	const sortBy =
+		sortByParam && validSortColumns.includes(sortByParam) ? sortByParam : 'course_name';
+	const sortOrder: 'asc' | 'desc' = sortOrderParam === 'desc' ? 'desc' : 'asc';
 
-	// Lade alle Instruktoren für das Formular "Kurs erstellen"
+	// Load all instructors for the "create course" form
 	const { data: instructorsForForm, error: instructorsError } = await locals.supabase
 		.from('instructors')
 		.select('instructor_id, first_name, last_name');
@@ -28,7 +29,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		// Optional: fail(500, { message: 'Could not load instructors data.' })
 	}
 
-	// Wenn der Benutzer ein Student ist, lade sein Profil und seine Einschreibungen
+	// If the user is a student, load their profile and enrollments
 	if (user.user_metadata?.role === 'student') {
 		const { data: studentData, error: studentError } = await locals.supabase
 			.from('students')
@@ -36,7 +37,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.eq('user_id', user.id)
 			.single();
 
-		if (studentError && studentError.code !== 'PGRST116') { // PGRST116: zero rows
+		if (studentError && studentError.code !== 'PGRST116') {
+			// PGRST116: zero rows
 			console.error('Error loading student profile for courses page:', studentError.message);
 		}
 		if (studentData) {
@@ -47,14 +49,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 	}
 
-	// Basisabfrage für Kurse
+	// Base query for courses
 	let coursesQuery = locals.supabase
 		.from('courses')
 		.select('*, instructors (instructor_id, first_name, last_name)');
 
 	const ascending = sortOrder === 'asc';
 
-	// Sortierung anwenden
+	// Apply sorting
 	if (sortBy === 'instructor') {
 		coursesQuery = coursesQuery
 			.order('instructors(last_name)', { ascending, nullsFirst: false })
@@ -97,16 +99,30 @@ export const actions: Actions = {
 		const instructor_id = parseInt(instructor_id_str, 10);
 
 		if (!course_name || isNaN(ects) || isNaN(hours) || !format || isNaN(instructor_id)) {
-			return fail(400, { success: false, message: 'All fields are required and ECTS/Hours/Instructor ID must be valid numbers.', action: '?/createCourse', error: true });
+			return fail(400, {
+				success: false,
+				message: 'All fields are required and ECTS/Hours/Instructor ID must be valid numbers.',
+				action: '?/createCourse',
+				error: true
+			});
 		}
 
 		const { error } = await locals.supabase.from('courses').insert({
-			course_name, ects, hours, format, instructor_id
+			course_name,
+			ects,
+			hours,
+			format,
+			instructor_id
 		});
 
 		if (error) {
 			console.error('Error creating course:', error);
-			return fail(500, { success: false, message: `Failed to create course: ${error.message}`, action: '?/createCourse', error: true });
+			return fail(500, {
+				success: false,
+				message: `Failed to create course: ${error.message}`,
+				action: '?/createCourse',
+				error: true
+			});
 		}
 		return { success: true, message: 'Course created successfully!', action: '?/createCourse' };
 	},
@@ -119,14 +135,24 @@ export const actions: Actions = {
 		const student_id_str = formData.get('student_id') as string;
 
 		if (!course_id_str || !student_id_str) {
-			return fail(400, { error: 'Missing course_id or student_id.', success: false, action: '?/enrollStudent', relatedCourseId: course_id_str });
+			return fail(400, {
+				error: 'Missing course_id or student_id.',
+				success: false,
+				action: '?/enrollStudent',
+				relatedCourseId: course_id_str
+			});
 		}
 
 		const course_id = parseInt(course_id_str, 10);
 		const student_id = parseInt(student_id_str, 10);
 
 		if (isNaN(course_id) || isNaN(student_id)) {
-			return fail(400, { error: 'Invalid course_id or student_id.', success: false, action: '?/enrollStudent', relatedCourseId: course_id_str });
+			return fail(400, {
+				error: 'Invalid course_id or student_id.',
+				success: false,
+				action: '?/enrollStudent',
+				relatedCourseId: course_id_str
+			});
 		}
 
 		const { error } = await locals.supabase.from('enrollments').insert({
@@ -137,9 +163,19 @@ export const actions: Actions = {
 
 		if (error) {
 			console.error('Error enrolling student:', error);
-			return fail(500, { error: `Failed to enroll: ${error.message}`, success: false, action: '?/enrollStudent', relatedCourseId: course_id_str });
+			return fail(500, {
+				error: `Failed to enroll: ${error.message}`,
+				success: false,
+				action: '?/enrollStudent',
+				relatedCourseId: course_id_str
+			});
 		}
-		return { success: true, message: 'Enrolled successfully!', action: '?/enrollStudent', relatedCourseId: course_id_str };
+		return {
+			success: true,
+			message: 'Enrolled successfully!',
+			action: '?/enrollStudent',
+			relatedCourseId: course_id_str
+		};
 	},
 
 	unenrollStudent: async ({ request, locals }) => {
@@ -150,14 +186,24 @@ export const actions: Actions = {
 		const student_id_str = formData.get('student_id') as string;
 
 		if (!course_id_str || !student_id_str) {
-			return fail(400, { error: 'Missing course_id or student_id for unenrollment.', success: false, action: '?/unenrollStudent', relatedCourseId: course_id_str });
+			return fail(400, {
+				error: 'Missing course_id or student_id for unenrollment.',
+				success: false,
+				action: '?/unenrollStudent',
+				relatedCourseId: course_id_str
+			});
 		}
 
 		const course_id = parseInt(course_id_str, 10);
 		const student_id = parseInt(student_id_str, 10);
 
 		if (isNaN(course_id) || isNaN(student_id)) {
-			return fail(400, { error: 'Invalid course_id or student_id.', success: false, action: '?/unenrollStudent', relatedCourseId: course_id_str });
+			return fail(400, {
+				error: 'Invalid course_id or student_id.',
+				success: false,
+				action: '?/unenrollStudent',
+				relatedCourseId: course_id_str
+			});
 		}
 
 		try {
@@ -170,7 +216,10 @@ export const actions: Actions = {
 				.maybeSingle(); // Allows 0 or 1 row, data will be null if 0 rows
 
 			if (fetchEnrollmentError) {
-				console.error('Error fetching enrollment_id for grade deletion:', fetchEnrollmentError.message);
+				console.error(
+					'Error fetching enrollment_id for grade deletion:',
+					fetchEnrollmentError.message
+				);
 				return fail(500, {
 					error: `Failed to fetch enrollment details: ${fetchEnrollmentError.message}`,
 					success: false,
@@ -198,7 +247,9 @@ export const actions: Actions = {
 					});
 				}
 			} else {
-				console.warn(`No specific enrollment record found for student_id ${student_id} and course_id ${course_id} to delete associated grades. Proceeding to attempt unenrollment.`);
+				console.warn(
+					`No specific enrollment record found for student_id ${student_id} and course_id ${course_id} to delete associated grades. Proceeding to attempt unenrollment.`
+				);
 			}
 
 			// Step 2: Delete the enrollment itself
@@ -224,7 +275,6 @@ export const actions: Actions = {
 				action: '?/unenrollStudent',
 				relatedCourseId: course_id_str
 			};
-
 		} catch (e: unknown) {
 			let errorMessage = 'An unexpected error occurred during unenrollment.';
 			if (e instanceof Error) {

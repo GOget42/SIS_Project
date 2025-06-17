@@ -1,11 +1,10 @@
-// src/lib/supabaseClient.ts
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-// Importieren und re-exportieren Sie den Database-Typ
-// Der Pfad zeigt nun auf die generierte Datei database.types.ts
+// Re-export the generated Database type for use throughout the app
 export type { Database } from './database.types';
-import type { Database } from './database.types'; // Notwendig, damit der Typ im aktuellen Modul bekannt ist
+// Import the type here so the generic parameter below is recognised
+import type { Database } from './database.types';
 
 export const supabase: SupabaseClient<Database> = createClient(
 	PUBLIC_SUPABASE_URL,
@@ -14,7 +13,7 @@ export const supabase: SupabaseClient<Database> = createClient(
 		auth: {
 			persistSession: true,
 			autoRefreshToken: true,
-			detectSessionInUrl: true,
+			detectSessionInUrl: true
 		}
 	}
 );

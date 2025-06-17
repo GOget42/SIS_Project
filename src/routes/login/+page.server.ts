@@ -1,4 +1,3 @@
-// src/routes/login/+page.server.ts
 import { fail, redirect } from '@sveltejs/kit';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
@@ -8,10 +7,14 @@ import type { Actions, PageServerLoad } from './$types';
 // Redirect immediately if a logged-in user accesses /login
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.session) {
-		console.log('[LOGIN LOAD] User already logged in, redirecting to /private/home from', url.pathname);
+		console.log(
+			'[LOGIN LOAD] User already logged in, redirecting to /private/home from',
+			url.pathname
+		);
 		throw redirect(303, '/private/home');
 	}
-	return {}; // Keine Daten zu laden, wenn nicht eingeloggt
+	// Nothing to load when the user is not logged in
+	return {};
 };
 
 export const actions: Actions = {
@@ -26,8 +29,8 @@ export const actions: Actions = {
 
 		console.log('[LOGIN ACTION] Attempting login for:', email);
 
-                // Recreate the Supabase client here because locals.supabase is not always reliable in actions
-                // for auth operations that need to set cookies directly.
+		// Recreate the Supabase client here because locals.supabase is not always reliable in actions
+		// for auth operations that need to set cookies directly.
 		const supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 			cookies: {
 				getAll: () => {
@@ -36,7 +39,7 @@ export const actions: Actions = {
 				},
 				setAll: (cookieArray: { name: string; value: string; options: CookieOptions }[]) => {
 					cookieArray.forEach(({ name, value, options }) => {
-                                                cookies.set(name, value, { ...options, path: '/' }); // Ensure path is set
+						cookies.set(name, value, { ...options, path: '/' }); // Ensure path is set
 					});
 				}
 			},
@@ -48,7 +51,10 @@ export const actions: Actions = {
 			}
 		});
 
-		const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+		const { data, error: signInError } = await supabase.auth.signInWithPassword({
+			email,
+			password
+		});
 
 		if (signInError) {
 			console.error('[LOGIN ACTION] Supabase signInWithPassword error:', signInError.message);
@@ -56,8 +62,8 @@ export const actions: Actions = {
 		}
 
 		console.log('[LOGIN ACTION] Supabase signInWithPassword success. User:', data.user?.id);
-             // Cookies are set by the Supabase client.
-             // The session will be loaded on the next request via the hook.
+		// Cookies are set by the Supabase client.
+		// The session will be loaded on the next request via the hook.
 		throw redirect(303, '/private/home');
 	}
 };

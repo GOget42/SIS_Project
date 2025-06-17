@@ -65,7 +65,6 @@ export interface AddAssignmentToCourseFormResult {
 	addAssignmentToCourseSuccess?: string;
 	addAssignmentToCourseError?: string;
 	assignment_name_form?: string;
-        // grade_form?: string; // Removed
 	weight_form?: string;
 	max_points_form?: string;
 	due_date_form?: string;
@@ -78,5 +77,5 @@ export type CoursePageActionData = AddStudentFormResult &
 	UpdateAssignmentFormResult &
 	DeleteAssignmentFormResult &
 	AddAssignmentToCourseFormResult & {
-	error?: string;
-};
+		error?: string;
+	};

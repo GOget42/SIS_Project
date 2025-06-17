@@ -1,6 +1,5 @@
-// src/routes/private/students/[id]/+page.server.ts
 import { redirect, fail } from '@sveltejs/kit';
-import { getStudentById }	from '$lib/api/students.ts';
+import { getStudentById } from '$lib/api/students.ts';
 import type { Actions, PageServerLoad } from './$types';
 import type { PostgrestError } from '@supabase/supabase-js';
 
@@ -39,11 +38,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const student = await getStudentById(student_id_param);
 
-
 	let availableCourses: AvailableCourseData[] = [];
 	let enrolledCourses: EnrolledCourseData[] = [];
 
-	if (student && student.student_id) { // student.student_id should be a number here
+	if (student && student.student_id) {
+		// student.student_id should be a number here
 		// Fetch courses in which the student is NOT enrolled
 		const { data: enrolledCourseIdsData, error: idsError } = await locals.supabase
 			.from('enrollments')
@@ -54,7 +53,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			console.error('Error fetching enrolled course IDs:', idsError.message);
 		}
 
-		const enrolledCourseIds = enrolledCourseIdsData?.map(e => e.course_id) || [];
+		const enrolledCourseIds = enrolledCourseIdsData?.map((e) => e.course_id) || [];
 
 		const courseQuery = locals.supabase.from('courses').select('course_id, course_name');
 		if (enrolledCourseIds.length > 0) {
@@ -91,9 +90,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			student_grades: RawStudentGrade[];
 		}
 
-		const { data: enrolledData, error: enrolledError } = await locals.supabase
+		const { data: enrolledData, error: enrolledError } = (await locals.supabase
 			.from('enrollments')
-			.select(`
+			.select(
+				`
                 enrollment_id,
                 courses (
                     course_id,
@@ -110,11 +110,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
                     grade,
                     student_grade_id
                 )
-            `)
-			.eq('student_id', student.student_id) as { data: RawEnrollment[] | null, error: PostgrestError | null };
+            `
+			)
+			.eq('student_id', student.student_id)) as {
+			data: RawEnrollment[] | null;
+			error: PostgrestError | null;
+		};
 
 		if (enrolledError) {
-			console.error('Error fetching enrolled courses with assignments and grades:', enrolledError.message);
+			console.error(
+				'Error fetching enrolled courses with assignments and grades:',
+				enrolledError.message
+			);
 		} else {
 			enrolledCourses = (enrolledData || []).map((enrollment: RawEnrollment) => {
 				const gradesMap = new Map<string, number | null>();
@@ -126,7 +133,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 				let processedAssignments: Assignment[] = [];
 				if (enrollment.courses && enrollment.courses.assignments) {
-					processedAssignments = enrollment.courses.assignments.map(asm => ({
+					processedAssignments = enrollment.courses.assignments.map((asm) => ({
 						...asm,
 						grade: gradesMap.get(asm.assignment_id) ?? null
 					}));
@@ -136,14 +143,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 					enrollment_id: enrollment.enrollment_id,
 					courses: enrollment.courses
 						? {
-							...enrollment.courses,
-							assignments: processedAssignments
-						}
+								...enrollment.courses,
+								assignments: processedAssignments
+							}
 						: null
 				};
 			});
 		}
-
 	} else {
 		// Student not found or student.student_id is not present
 		// Error handling or return empty arrays
@@ -204,13 +210,11 @@ export const actions: Actions = {
 			return fail(409, { error: 'Student is already enrolled in this course.' });
 		}
 
-		const { error: insertError } = await locals.supabase
-			.from('enrollments')
-			.insert({
-				student_id: student_id,
-				course_id: course_id,
-				enrollment_date: new Date().toISOString().split('T')[0] // Only date YYYY-MM-DD
-			});
+		const { error: insertError } = await locals.supabase.from('enrollments').insert({
+			student_id: student_id,
+			course_id: course_id,
+			enrollment_date: new Date().toISOString().split('T')[0] // Only date YYYY-MM-DD
+		});
 
 		if (insertError) {
 			console.error('Error enrolling student:', insertError.message);

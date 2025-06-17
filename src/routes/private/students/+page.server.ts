@@ -1,24 +1,24 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-// SUPABASE_SERVICE_ROLE_KEY und createClient werden nicht mehr für Admin-Aktionen auf dieser Seite benötigt.
+// SUPABASE_SERVICE_ROLE_KEY and createClient are no longer required for admin actions on this page.
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.session) {
 		throw redirect(302, '/login');
 	}
 
-	const sortBy = url.searchParams.get('sortBy') || 'last_name'; // Standard-Sortierung
-	const sortOrder = url.searchParams.get('sortOrder') || 'asc'; // Standard-Reihenfolge
+	const sortBy = url.searchParams.get('sortBy') || 'last_name'; // Default sort column
+	const sortOrder = url.searchParams.get('sortOrder') || 'asc'; // Default order
 
 	const validSortColumns = ['first_name', 'last_name', 'email'];
 	const columnToSort = validSortColumns.includes(sortBy) ? sortBy : 'last_name';
 	const ascending = sortOrder === 'asc';
 
-	// user_id wird für die Anzeige benötigt, aber nicht mehr für Edit/Delete auf dieser Seite
+	// user_id is used for display but not for edit or delete on this page
 	const { data: students, error } = await locals.supabase
 		.from('students')
-		.select('student_id, first_name, last_name, email, user_id') // user_id beibehalten, falls es für Links oder andere Zwecke benötigt wird
+		.select('student_id, first_name, last_name, email, user_id') // keep user_id for links or other uses
 		.order(columnToSort, { ascending: ascending });
 
 	if (error) {
@@ -53,20 +53,28 @@ export const actions: Actions = {
 		}
 
 		try {
-			const createUserResponse = await eventFetch(`${supabaseProjectUrl}/functions/v1/create-user`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${locals.session?.access_token}`
-				},
-				body: JSON.stringify({ email, password, role: 'student', first_name, last_name })
-			});
+			const createUserResponse = await eventFetch(
+				`${supabaseProjectUrl}/functions/v1/create-user`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${locals.session?.access_token}`
+					},
+					body: JSON.stringify({ email, password, role: 'student', first_name, last_name })
+				}
+			);
 
 			const createUserData = await createUserResponse.json();
 
 			if (!createUserResponse.ok) {
 				console.error('Error from create-user function:', createUserData.error);
-				return fail(createUserResponse.status, { error: createUserData.error || 'Failed to create auth user', first_name, last_name, email });
+				return fail(createUserResponse.status, {
+					error: createUserData.error || 'Failed to create auth user',
+					first_name,
+					last_name,
+					email
+				});
 			}
 
 			return { success: true, message: 'Student created successfully.' };
@@ -79,6 +87,4 @@ export const actions: Actions = {
 			return fail(500, { error: errorMessage, first_name, last_name, email });
 		}
 	}
-	// updateStudent action removed
-	// deleteStudent action removed
 };

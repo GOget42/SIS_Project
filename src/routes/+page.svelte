@@ -1,4 +1,3 @@
-<!-- src/routes/+page.svelte -->
 <script>
 	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabaseClient.js';
@@ -7,7 +6,10 @@
 	onMount(async () => {
 		console.log('⚡ Checking session...');
 
-		const { data: { session }, error } = await supabase.auth.getSession();
+		const {
+			data: { session },
+			error
+		} = await supabase.auth.getSession();
 
 		if (error) {
 			console.error('🚨 Session error:', error.message);
@@ -26,6 +28,6 @@
 	});
 </script>
 
-<div class="flex items-center justify-center min-h-screen">
-	<div class="text-center text-gray-600 text-lg">Loading...</div>
+<div class="flex min-h-screen items-center justify-center">
+	<div class="text-center text-lg text-gray-600">Loading...</div>
 </div>
