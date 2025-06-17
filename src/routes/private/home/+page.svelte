@@ -1,7 +1,6 @@
 <script lang="ts">
     import type { PageData } from './$types';
     import StudentsPerCourseChart from '$lib/components/StudentsPerCourseChart.svelte';
-    import GPAPerCourseChart from '$lib/components/GPAPerCourseChart.svelte';
     import ProgressChart from '$lib/components/ProgressChart.svelte';
     import GradeDistributionStudentChart from '$lib/components/GradeDistributionStudentChart.svelte';
     import StudentAssignmentTimeline from '$lib/components/StudentAssignmentTimeline.svelte';
