@@ -9,7 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 const corsHeaders = {
 	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'POST, OPTIONS', // POST für Löschen ist üblich, wenn body user_id enthält
+        'Access-Control-Allow-Methods': 'POST, OPTIONS', // POST is common for deletions when the body contains user_id
 	'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -50,7 +50,7 @@ serve(async (req: Request) => {
 	}
 
 	try {
-		// User ID sollte im Body der POST-Anfrage sein
+                // User ID should be provided in the POST body
 		if (req.method !== 'POST') {
 			return new Response(JSON.stringify({ error: 'Method not allowed, please use POST with user_id in body' }), {
 				status: 405,
@@ -73,22 +73,22 @@ serve(async (req: Request) => {
 
 		if (deleteAuthUserError) {
 			console.error('Failed to delete auth user:', deleteAuthUserError.message);
-			// Mögliche Fehler: Benutzer nicht gefunden (kann als Erfolg gewertet werden, wenn idempotent gewünscht)
-			// oder andere serverseitige Probleme.
+                        // Possible errors: user not found (may be considered a success if idempotency is desired)
+                        // or other server-side issues.
 			if (deleteAuthUserError.message.includes('User not found')) {
 				return new Response(JSON.stringify({ message: 'User not found or already deleted' }), {
-					status: 200, // Oder 404, je nach gewünschter Semantik
+                                        status: 200, // Or 404 depending on the desired semantics
 					headers: jsonResponseHeaders,
 				});
 			}
 			return new Response(JSON.stringify({ error: `Failed to delete user: ${deleteAuthUserError.message}` }), {
-				status: 500, // Oder spezifischerer Statuscode basierend auf dem Fehler
+                                status: 500, // Or a more specific status code based on the error
 				headers: jsonResponseHeaders,
 			});
 		}
 
-		// Hinweis: Zugehörige Profileinträge (students, instructors, admins) werden hier nicht explizit gelöscht.
-		// Dies sollte über DB-Trigger (ON DELETE CASCADE) oder separate Logik erfolgen.
+                // Note: Related profile entries (students, instructors, admins) are not explicitly deleted here.
+                // This should be handled via DB triggers (ON DELETE CASCADE) or separate logic.
 
 		return new Response(JSON.stringify({ message: 'User deleted successfully from authentication system' }), {
 			status: 200,
@@ -96,7 +96,7 @@ serve(async (req: Request) => {
 		});
 
 	} catch (err) {
-		// Catchen von JSON-Parsing-Fehlern oder anderen unerwarteten Fehlern
+                // Catch JSON parsing errors or other unexpected issues
 		if (err instanceof SyntaxError) {
 			console.error('JSON Parsing Error:', err.message);
 			return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {

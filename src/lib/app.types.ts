@@ -1,7 +1,7 @@
 import type { Tables } from './database.types';
 import type { User } from '@supabase/supabase-js';
 
-// Alias-Typen für leichtere Verwendung
+// Alias types for easier usage
 export type Course = Tables<'courses'>;
 export type Instructor = Tables<'instructors'>;
 export type Student = Tables<'students'>;
@@ -9,7 +9,7 @@ export type Enrollment = Tables<'enrollments'>;
 export type Assignment = Tables<'assignments'>;
 export type Admin = Tables<'admins'>;
 
-// Erweitert für die Kursdetailseite
+// Extended for the course detail page
 export interface AppCourse extends Course {
 	instructors: Instructor | null;
 }
@@ -19,7 +19,7 @@ export interface AppEnrollment extends Enrollment {
 	assignments: Assignment[];
 }
 
-// Typ für die Daten, die von der `load` Funktion in `+page.server.ts` zurückgegeben werden
+// Type for the data returned by the `load` function in `+page.server.ts`
 export interface AppCoursePageData {
 	user: User | null;
 	course: AppCourse | null;
@@ -28,7 +28,7 @@ export interface AppCoursePageData {
 	error?: string | null;
 }
 
-// Typen für Formular-Action-Rückgaben
+// Types for form action returns
 export interface AddStudentFormResult {
 	addStudentSuccess?: string;
 	addStudentError?: string;
@@ -65,13 +65,13 @@ export interface AddAssignmentToCourseFormResult {
 	addAssignmentToCourseSuccess?: string;
 	addAssignmentToCourseError?: string;
 	assignment_name_form?: string;
-	// grade_form?: string; // Entfernt
+        // grade_form?: string; // Removed
 	weight_form?: string;
 	max_points_form?: string;
 	due_date_form?: string;
 }
 
-// Kombinierter Typ für die `form` Prop in Svelte
+// Combined type for the `form` prop in Svelte
 export type CoursePageActionData = AddStudentFormResult &
 	RemoveStudentFormResult &
 	AddAssignmentFormResult &

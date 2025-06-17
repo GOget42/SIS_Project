@@ -71,14 +71,14 @@ serve(async (req: Request) => {
     const { data: createdAuthUser, error: createAuthUserError } = await supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // oder false, je nach gewünschtem Flow
+      email_confirm: true, // or false, depending on the desired flow
       user_metadata: { role },
     });
 
     if (createAuthUserError) {
       console.error('Auth User Creation Error:', createAuthUserError.message);
       return new Response(JSON.stringify({ error: createAuthUserError.message }), {
-        status: 400, // Supabase oft 400 für Duplikate etc.
+        status: 400, // Supabase often returns 400 for duplicates, etc.
         headers: jsonResponseHeaders,
       });
     }
@@ -112,9 +112,9 @@ serve(async (req: Request) => {
 
     console.log(`User profile created in ${role}s table for user:`, authUserId);
 
-    // E-Mail-Versand wurde entfernt
+    // Email sending was removed
 
-    return new Response(JSON.stringify({ user: createdAuthUser.user }), { // Nur das user-Objekt zurückgeben
+    return new Response(JSON.stringify({ user: createdAuthUser.user }), { // Return only the user object
       status: 200,
       headers: jsonResponseHeaders,
     });

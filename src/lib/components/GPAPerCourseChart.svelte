@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { SupabaseClient } from '@supabase/supabase-js';
-	// Stellen Sie sicher, dass der Pfad zu Ihren Typdefinitionen korrekt ist
+        // Ensure the path to your type definitions is correct
 	import type { Database, Tables } from '$lib/database.types';
 
-	// Prop für den Supabase-Client. Dieser muss von einer übergeordneten Komponente
-	// oder über den Kontext bereitgestellt werden.
+        // Prop for the Supabase client. Must be provided by a parent component
+        // or via context.
 	export let supabase: SupabaseClient<Database>;
 
-	// Typ für die berechneten GPA-Daten
+        // Type for the calculated GPA data
 	type GpaDataItem = {
 		courseName: string;
 		courseId: number;
@@ -20,7 +20,7 @@
 	let error: string | null = null;
 
 	/**
-	 * Berechnet den GPA für jeden Kurs basierend auf den Aufgaben und Studentnoten.
+         * Calculates the GPA for each course based on assignments and student grades.
 	 */
 	function calculateGpaPerCourse(
 		allCourses: Tables<'courses'>[],
@@ -46,9 +46,9 @@
 			let courseHasAssignmentsWithGradesAndWeight = false;
 
 			for (const assignment of courseAssignments) {
-				// Überspringe Aufgaben ohne ID, ohne Gewichtung oder mit nicht-positiver Gewichtung.
-				// Das Feld 'weight' ist in 'database.types.ts' als 'number' definiert, nicht 'number | null'.
-				// Die Prüfung auf 'null' ist hier also eine zusätzliche Sicherheitsmaßnahme oder falls sich der Typ ändert.
+				// Skip assignments without an ID, without weighting or with a non-positive weight.
+				// Das Feld 'weight' ist in 'database.types.ts' als 'number' definiert, nicht 'number |The 'weight' field is defined as 'number' in 'database.types.ts', not 'number | null'.
+				// The null check here is an extra safety measure in case the type changes.
 				if (assignment.assignment_id === null || assignment.weight === null || assignment.weight <= 0) {
 					continue;
 				}
@@ -59,7 +59,7 @@
 
 				if (gradesForAssignment.length > 0) {
 					courseHasAssignmentsWithGradesAndWeight = true;
-					// Stelle sicher, dass Noten Zahlen sind für die Summenbildung.
+					// Ensure grades are numeric for summation.
 					const sumOfGrades = gradesForAssignment.reduce((sum, sg) => sum + (Number(sg.grade) || 0), 0);
 					const avgAssignmentGrade = sumOfGrades / gradesForAssignment.length;
 
@@ -75,7 +75,7 @@
 					gpa: totalWeightedGradeSum / totalWeightSum
 				});
 			} else {
-				// Wenn keine gewichteten Aufgaben mit Noten vorhanden sind, ist der GPA null.
+				// If there are no weighted assignments with grades, the GPA is null.
 				gpaResults.push({ courseName: course.course_name, courseId: course.course_id, gpa: null });
 			}
 		}
@@ -88,27 +88,27 @@
 		try {
 			const { data: courses, error: coursesError } = await supabase
 				.from('courses')
-				.select('course_id, course_name'); // Nur benötigte Felder auswählen
+				.select('course_id, course_name'); // Select only required fields
 			if (coursesError) throw coursesError;
-			if (!courses) throw new Error('Keine Kurse gefunden');
+			if (!courses) throw new Error('No courses found');
 
 			const { data: assignments, error: assignmentsError } = await supabase
 				.from('assignments')
-				.select('assignment_id, course_id, weight'); // Nur benötigte Felder auswählen
+				.select('assignment_id, course_id, weight'); // Select only required fields
 			if (assignmentsError) throw assignmentsError;
-			if (!assignments) throw new Error('Keine Aufgaben gefunden');
+			if (!assignments) throw new Error('No assignments found');
 
 			const { data: studentGrades, error: studentGradesError } = await supabase
 				.from('student_grades')
-				.select('assignment_id, grade'); // Nur benötigte Felder auswählen
+				.select('assignment_id, grade'); // Select only required fields
 			if (studentGradesError) throw studentGradesError;
-			if (!studentGrades) throw new Error('Keine Studentnoten gefunden');
+			if (!studentGrades) throw new Error('No student grades found');
 
-			// Stelle sicher, dass die Typen übereinstimmen, insbesondere für studentGrades
+			// Ensure that the types match, especially for studentGrades
 			gpaData = calculateGpaPerCourse(courses, assignments, studentGrades as Pick<Tables<'student_grades'>, 'assignment_id' | 'grade'>[]);
 
 		} catch (e: any) {
-			error = `Fehler beim Laden oder Berechnen der GPA-Daten: ${e.message}`;
+			error = `Error loading or calculating GPA data: ${e.message}`;
 			console.error("Error fetching or calculating GPA data:", e);
 		} finally {
 			isLoading = false;
@@ -119,7 +119,7 @@
 		if (supabase) {
 			fetchDataAndCalculateGPA();
 		} else {
-			error = "Supabase Client ist nicht initialisiert. GPA-Daten können nicht geladen werden.";
+			error = "Supabase client is not initialized. GPA data cannot be loaded.";
 			isLoading = false;
 			console.error("Supabase client not available in GPAPerCourseChart.svelte onMount.");
 		}
@@ -129,11 +129,11 @@
 
 <div>
 	{#if isLoading}
-		<p>Lade GPA-Daten...</p>
+		<p>Loading GPA data...</p>
 	{:else if error}
 		<p style="color: red;">{error}</p>
 	{:else if gpaData.length === 0}
-		<p>Keine GPA-Daten verfügbar.</p>
+		<p>No GPA data available.</p>
 	{:else}
 		<div>
 			<h2>GPA pro Kurs</h2>

@@ -33,7 +33,7 @@
 		await goto('/logout');
 	}
 
-	// Basis-Styling für Navigationslinks
+        // Basic styling for navigation links
 	const navLinkClasses = 'px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out';
 	const inactiveNavLinkClasses = 'text-gray-700 hover:bg-gray-200 hover:text-gray-900';
 	const buttonClasses = 'px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors duration-150 ease-in-out';
@@ -71,7 +71,7 @@
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/login">Login</a>
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/signup">Signup</a>
 					{:else if $userStore === undefined}
-						<!-- Dieser Block wird angezeigt, während der Benutzerstatus noch nicht vom Server geladen wurde -->
+                                                <!-- This block is shown while the user status is still loading from the server -->
 						<span class="text-sm text-gray-500 px-3 py-2">Authenticating...</span>
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/login">Login</a>
 						<a class="{navLinkClasses} {inactiveNavLinkClasses}" href="/signup">Signup</a>

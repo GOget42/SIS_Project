@@ -11,7 +11,7 @@
     let errorMsg = '';
 
     async function handleSignup() {
-        errorMsg = ''; // Fehlermeldung zurücksetzen
+        errorMsg = ''; // Reset error message
         const { data, error } = await supabase.auth.signUp({
             email,
             password,

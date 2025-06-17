@@ -97,8 +97,8 @@
                 </div>
             {:else}
                 <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
-                    <p class="font-bold">Hinweis</p>
-                    <p>Studenten-ID nicht im Profil gefunden oder Profil unvollständig, Diagramme können nicht angezeigt werden.</p>
+                    <p class="font-bold">Note</p>
+                    <p>Student ID not found in the profile or profile incomplete, charts cannot be displayed.</p>
                 </div>
             {/if}
 
@@ -162,8 +162,8 @@
                 </div>
             {:else}
                 <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 my-8" role="alert">
-                    <p class="font-bold">Hinweis</p>
-                    <p>Instructor ID nicht verfügbar, Aufgaben-Timeline kann nicht angezeigt werden.</p>
+                    <p class="font-bold">Note</p>
+                    <p>Instructor ID not available, assignment timeline cannot be displayed.</p>
                 </div>
             {/if}
 
