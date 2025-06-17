@@ -242,8 +242,6 @@
 
 			let allStudentsGradedForThisAssignment = true;
 			for (const enrollment of enrolledCourseStudents) {
-				if (!enrollment?.students) {
-				}
 				const gradeRecord = courseGrades.find(
 					(g) =>
 						g.enrollment_id === enrollment.enrollment_id &&

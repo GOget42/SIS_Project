@@ -1,6 +1,5 @@
 import { supabase } from '$lib/supabaseClient';
 import type { PageServerLoad, Actions } from './$types';
-import type { User } from '@supabase/supabase-js';
 import type { Tables, TablesInsert, TablesUpdate } from '$lib/database.types';
 import { fail, error as svelteKitError } from '@sveltejs/kit';
 

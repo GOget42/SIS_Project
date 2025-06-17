@@ -44,17 +44,6 @@
 		ects: number;
 	}
 
-	// --- Admin-specific types ---
-	interface AdminCourseSummary {
-		course_id: number;
-		course_name: string;
-		student_count: number;
-		average_grade: number | null;
-		format: string;
-		ects: number;
-		instructor_name?: string | null;
-	}
-
 	// Reactive block for ID and chart data
 	$: {
 		if (

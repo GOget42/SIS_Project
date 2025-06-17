@@ -18,15 +18,15 @@ export async function getCourseById(id: number): Promise<Course> {
 }
 
 export async function createCourse(course: NewCourse): Promise<Course[]> {
-	const { data, error } = await supabase.from('courses').insert([course]);
+	const { data, error } = await supabase.from('courses').insert([course]).select();
 	if (error) throw error;
-	return data;
+	return data || [];
 }
 
 export async function updateCourse(id: number, updates: CourseUpdate): Promise<Course[]> {
-	const { data, error } = await supabase.from('courses').update(updates).eq('course_id', id);
+	const { data, error } = await supabase.from('courses').update(updates).eq('course_id', id).select();
 	if (error) throw error;
-	return data;
+	return data || [];
 }
 
 export async function deleteCourse(id: number): Promise<void> {

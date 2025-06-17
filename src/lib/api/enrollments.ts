@@ -7,13 +7,13 @@ type NewEnrollment = Database['public']['Tables']['enrollments']['Insert'];
 export async function getAllEnrollments(): Promise<Enrollment[]> {
 	const { data, error } = await supabase.from('enrollments').select('*');
 	if (error) throw error;
-	return data;
+	return data || [];
 }
 
 export async function createEnrollment(enrollment: NewEnrollment): Promise<Enrollment[]> {
-	const { data, error } = await supabase.from('enrollments').insert([enrollment]);
+	const { data, error } = await supabase.from('enrollments').insert([enrollment]).select();
 	if (error) throw error;
-	return data;
+	return data || [];
 }
 
 export async function deleteEnrollment(id: number): Promise<void> {
