@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import Chart from 'chart.js/auto';
 	import type { TooltipItem } from 'chart.js';
 	import { supabase } from '$lib/supabaseClient';
@@ -99,7 +99,7 @@
 				.filter((e) => e.courses && e.courses.active === false && e.courses.course_id != null)
 				.map((e) => ({
 					enrollment_id: e.enrollment_id,
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 					course: e.courses! // Asserting courses is not null due to filter
 				}));
 
@@ -112,7 +112,6 @@
 
 			// 2. Fetch assignments and grades for each completed course
 			const courseProcessingPromises = completedEnrollments.map(async (enrollment) => {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				const { course_id, course_name, ects } = enrollment.course!;
 				const enrollmentId = enrollment.enrollment_id;
 

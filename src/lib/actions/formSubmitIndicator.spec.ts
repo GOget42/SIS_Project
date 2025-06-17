@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { formSubmitIndicator } from './formSubmitIndicator';
-import { startFormSubmission, endFormSubmission } from '$lib/stores/formLoadingStore';
+import { endFormSubmission, startFormSubmission } from '$lib/stores/formLoadingStore';
 import { enhance } from '$app/forms';
 
 vi.mock('$app/forms', () => ({ enhance: vi.fn(() => ({ destroy: vi.fn() })) }));

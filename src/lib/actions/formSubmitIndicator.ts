@@ -1,5 +1,5 @@
 import { enhance } from '$app/forms';
-import { startFormSubmission, endFormSubmission } from '$lib/stores/formLoadingStore';
+import { endFormSubmission, startFormSubmission } from '$lib/stores/formLoadingStore';
 import type { SubmitFunction } from '@sveltejs/kit';
 
 /**

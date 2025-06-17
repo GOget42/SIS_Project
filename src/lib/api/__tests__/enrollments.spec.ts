@@ -1,5 +1,5 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { getAllEnrollments, createEnrollment, deleteEnrollment } from '../enrollments';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createEnrollment, deleteEnrollment, getAllEnrollments } from '../enrollments';
 import { supabase } from '$lib/supabaseClient';
 
 vi.mock('$lib/supabaseClient', () => ({

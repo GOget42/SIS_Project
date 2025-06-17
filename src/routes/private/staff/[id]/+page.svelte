@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { deleteAuthUser } from '$lib/api/auth.ts';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import type { ActionData, PageData } from './$types';
 	import { formSubmitIndicator } from '$lib/actions/formSubmitIndicator';
 	import type { ActionResult } from '@sveltejs/kit';

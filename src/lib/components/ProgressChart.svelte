@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import Chart from 'chart.js/auto';
 	import type { TooltipItem } from 'chart.js';
 	import { supabase } from '$lib/supabaseClient';
