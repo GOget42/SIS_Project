@@ -1,7 +1,11 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { deleteAuthUser } from '$lib/api/auth.ts';
-import type { StaffCourseAssignment, CourseInfo, Assignment as StaffPageAssignment } from './$types'; // Ensure these types are defined in $types or adjust accordingly
+import type {
+	StaffCourseAssignment,
+	CourseInfo,
+	Assignment as StaffPageAssignment
+} from './$types'; // Ensure these types are defined in $types or adjust accordingly
 
 export const load: PageServerLoad = async ({ locals: { supabase, getSession }, params }) => {
 	const session = await getSession();
@@ -25,15 +29,16 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 		.single();
 
 	if (instructorError || !instructor) {
-               // In case of an error or if no instructor was found, return empty arrays
-               // so the page does not break and can show a "Not found" message.
+		// In case of an error or if no instructor was found, return empty arrays
+		// so the page does not break and can show a "Not found" message.
 		return { staffMember: null, assignedCourses: [], availableTasks: [] };
 	}
 
-       // Fetch courses the instructor is responsible for, including assignments
+	// Fetch courses the instructor is responsible for, including assignments
 	const { data: coursesData, error: coursesError } = await supabase
 		.from('courses')
-		.select(`
+		.select(
+			`
             course_id,
             course_name,
             assignments (
@@ -42,14 +47,15 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
               due_date,
               weight
             )
-        `)
+        `
+		)
 		.eq('instructor_id', instructor.instructor_id);
 
 	let formattedAssignedCourses: StaffCourseAssignment[] = [];
 	if (coursesError) {
 		console.error('Error fetching courses for staff member:', coursesError);
 	} else if (coursesData) {
-             // Create an array of promises to fetch student counts for each course in parallel
+		// Create an array of promises to fetch student counts for each course in parallel
 		const coursePromises = coursesData.map(async (course) => {
 			const { count: studentCount, error: countError } = await supabase
 				.from('enrollments')
@@ -57,7 +63,10 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 				.eq('course_id', course.course_id);
 
 			if (countError) {
-				console.error(`Error fetching student count for course ${course.course_id}:`, countError.message);
+				console.error(
+					`Error fetching student count for course ${course.course_id}:`,
+					countError.message
+				);
 				// Setze student_count auf 0 oder einen anderen Standardwert im Fehlerfall
 			}
 
@@ -66,22 +75,22 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession }, p
 				course: {
 					course_id: course.course_id,
 					course_name: course.course_name,
-                             student_count: studentCount === null ? 0 : studentCount, // Add student count
+					student_count: studentCount === null ? 0 : studentCount // Add student count
 				} as CourseInfo,
-				assignments: (course.assignments || []).map(asm => ({
+				assignments: (course.assignments || []).map((asm) => ({
 					assignment_id: asm.assignment_id,
 					assignment_name: asm.assignment_name,
 					due_date: asm.due_date,
-					weight: asm.weight,
-				})) as StaffPageAssignment[],
+					weight: asm.weight
+				})) as StaffPageAssignment[]
 			};
 		});
 
-		// Warte auf alle Promises, um die formatierten Kursdaten zu erhalten
+		// Wait for all promises to resolve to get formatted course data
 		formattedAssignedCourses = await Promise.all(coursePromises);
 	}
 
-	const availableTasks: never[] = []; // Platzhalter, muss ggf. noch implementiert werden
+	const availableTasks: never[] = []; // Placeholder for future tasks implementation
 
 	return {
 		staffMember: instructor,
@@ -160,7 +169,9 @@ export const actions: Actions = {
 			.eq('instructor_id', params.id);
 
 		if (deleteInstructorError) {
-			return fail(500, { message: `Failed to delete staff member from database: ${deleteInstructorError.message}` });
+			return fail(500, {
+				message: `Failed to delete staff member from database: ${deleteInstructorError.message}`
+			});
 		}
 
 		if (authUserIdToDelete) {

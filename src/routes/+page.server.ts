@@ -1,4 +1,3 @@
-// src/routes/+page.server.ts
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -7,6 +6,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 		console.log('[ROOT PAGE LOAD] User is logged in, redirecting from / to /private/home');
 		throw redirect(303, '/private/home');
 	}
-	// Wenn nicht eingeloggt, einfach die Seite laden (die dann z.B. Links zu Login/Register anzeigt)
+	// If the user is not logged in, render the public page so it can show login or signup links
 	return {};
 };

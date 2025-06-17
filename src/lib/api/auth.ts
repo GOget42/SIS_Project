@@ -1,8 +1,15 @@
-// src/lib/api/auth.ts
 import { supabase } from '$lib/supabaseClient';
 
-export async function createAuthUser(email: string, password: string, role: string, first_name: string = '', last_name: string = '') {
-	const { data: { session } } = await supabase.auth.getSession();
+export async function createAuthUser(
+	email: string,
+	password: string,
+	role: string,
+	first_name: string = '',
+	last_name: string = ''
+) {
+	const {
+		data: { session }
+	} = await supabase.auth.getSession();
 	if (!session) {
 		throw new Error('No active session found');
 	}
@@ -11,7 +18,7 @@ export async function createAuthUser(email: string, password: string, role: stri
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${session.access_token}`
+			Authorization: `Bearer ${session.access_token}`
 		},
 		body: JSON.stringify({ email, password, role, first_name, last_name })
 	});
@@ -26,7 +33,9 @@ export async function createAuthUser(email: string, password: string, role: stri
 }
 
 export async function deleteAuthUser(user_id: string) {
-	const { data: { session } } = await supabase.auth.getSession();
+	const {
+		data: { session }
+	} = await supabase.auth.getSession();
 	if (!session) {
 		throw new Error('No active session found');
 	}
@@ -36,7 +45,7 @@ export async function deleteAuthUser(user_id: string) {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${session.access_token}`
+				Authorization: `Bearer ${session.access_token}`
 			},
 			body: JSON.stringify({ user_id })
 		});

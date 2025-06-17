@@ -1,4 +1,3 @@
-// src/hooks.server.ts
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { sequence } from '@sveltejs/kit/hooks';
 import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
@@ -12,7 +11,7 @@ declare global {
 			supabase: ReturnType<typeof createServerClient>;
 			session: Session | null;
 			user: User | null;
-                        getSession: () => Promise<Session | null>; // Added for getSession
+			getSession: () => Promise<Session | null>; // Added for getSession
 		}
 		// interface PageData {}
 		// interface Error {}
@@ -22,7 +21,7 @@ declare global {
 
 export const handleError: HandleServerError = ({ error }) => {
 	console.error('Error occurred:', error);
-        // event was removed because it was unused
+	// event was removed because it was unused
 	return { message: 'Something went wrong' };
 };
 
@@ -64,7 +63,8 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 		} = await event.locals.supabase.auth.getSession();
 
 		if (currentSessionData && currentSessionData.access_token) {
-			event.locals.session = currentSessionData; // Gültige Session gefunden und gesetzt
+			// Valid session found; attach to locals
+			event.locals.session = currentSessionData;
 			const {
 				data: { user },
 				error: userError
@@ -83,34 +83,44 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 			} else if (user) {
 				event.locals.user = user;
 			} else {
-                                // getUser returned no error, but the user is null.
-				console.warn('⚠️ [HOOK] User data is null after getUser() without an error. Clearing session.');
+				// getUser returned no error, but the user is null.
+				console.warn(
+					'⚠️ [HOOK] User data is null after getUser() without an error. Clearing session.'
+				);
 				event.locals.user = null;
 				event.locals.session = null;
 				const { error: signOutError } = await event.locals.supabase.auth.signOut();
 				if (signOutError) {
-					console.error('❗ [HOOK] Error during signOut (null user, no error case):', signOutError.message);
+					console.error(
+						'❗ [HOOK] Error during signOut (null user, no error case):',
+						signOutError.message
+					);
 				} else {
 					console.log('🗑️ [HOOK] Session cleared due to null user without error.');
 				}
 			}
 		} else {
-                        // currentSessionData is null OR currentSessionData is missing access_token
+			// No session or missing access token
 			event.locals.user = null;
 			event.locals.session = null;
 			if (currentSessionData) {
-                                // currentSessionData existed but was invalid (e.g., no access_token)
-				console.warn('⚠️ [HOOK] Session data found but was invalid (e.g., no access_token). Clearing session.');
+				// Session data existed but was invalid (for example no access token)
+				console.warn(
+					'⚠️ [HOOK] Session data found but was invalid (e.g., no access_token). Clearing session.'
+				);
 				const { error: signOutError } = await event.locals.supabase.auth.signOut();
 				if (signOutError) {
-					console.error('❗ [HOOK] Error during signOut (invalid session data):', signOutError.message);
+					console.error(
+						'❗ [HOOK] Error during signOut (invalid session data):',
+						signOutError.message
+					);
 				} else {
 					console.log('🗑️ [HOOK] Session cleared due to invalid session data.');
 				}
 			}
-			// Wenn currentSessionData von Anfang an null war, gibt es keine aktive Sitzung zum Abmelden.
+			// If currentSessionData was null from the start there is no session to sign out
 		}
-	} catch (err: unknown) { // Geändert von any zu unknown
+	} catch (err: unknown) {
 		let errorMessage = 'Unknown error during session/user population';
 		if (err instanceof Error) {
 			errorMessage = err.message;
@@ -121,7 +131,7 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 		event.locals.session = null;
 		event.locals.user = null;
 
-                // Try to clear client-side session cookies if the Supabase client is available
+		// Try to clear client-side session cookies if the Supabase client is available
 		if (event.locals.supabase && event.locals.supabase.auth) {
 			console.log('ℹ️ [HOOK] Attempting to clear session due to error during population.');
 			const { error: signOutError } = await event.locals.supabase.auth.signOut();
@@ -134,7 +144,8 @@ const supabaseHandler: Handle = async ({ event, resolve }) => {
 	}
 
 	return resolve(event, {
-		filterSerializedResponseHeaders: (name: string) => name === 'content-range' || name === 'x-supabase-api-version'
+		filterSerializedResponseHeaders: (name: string) =>
+			name === 'content-range' || name === 'x-supabase-api-version'
 	});
 };
 

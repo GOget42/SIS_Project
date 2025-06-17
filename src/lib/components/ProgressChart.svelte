@@ -23,14 +23,14 @@
 	let completedCoursesDetails: CompletedCourseDetail[] = [];
 
 	// Helper function to generate distinct colors for chart segments
-	function getCourseColors(count: number): { backgrounds: string[], borders: string[] } {
+	function getCourseColors(count: number): { backgrounds: string[]; borders: string[] } {
 		const baseColors = [
 			{ bg: 'rgba(75, 192, 192, 0.7)', border: 'rgba(75, 192, 192, 1)' }, // Teal
-			{ bg: 'rgba(54, 162, 235, 0.7)', border: 'rgba(54, 162, 235, 1)' },  // Blue
+			{ bg: 'rgba(54, 162, 235, 0.7)', border: 'rgba(54, 162, 235, 1)' }, // Blue
 			{ bg: 'rgba(255, 206, 86, 0.7)', border: 'rgba(255, 206, 86, 1)' }, // Yellow
-			{ bg: 'rgba(153, 102, 255, 0.7)', border: 'rgba(153, 102, 255, 1)' },// Purple
+			{ bg: 'rgba(153, 102, 255, 0.7)', border: 'rgba(153, 102, 255, 1)' }, // Purple
 			{ bg: 'rgba(255, 159, 64, 0.7)', border: 'rgba(255, 159, 64, 1)' }, // Orange
-			{ bg: 'rgba(255, 99, 132, 0.7)', border: 'rgba(255, 99, 132, 1)' },   // Pink
+			{ bg: 'rgba(255, 99, 132, 0.7)', border: 'rgba(255, 99, 132, 1)' }, // Pink
 			{ bg: 'rgba(16, 185, 129, 0.7)', border: 'rgba(16, 185, 129, 1)' } // Emerald
 		];
 		const backgrounds: string[] = [];
@@ -78,7 +78,7 @@
 				return;
 			}
 
-			const courseIds = enrollments.map(e => e.course_id).filter(id => id !== null) as number[];
+			const courseIds = enrollments.map((e) => e.course_id).filter((id) => id !== null) as number[];
 
 			if (courseIds.length === 0) {
 				achievedEcts = 0;
@@ -96,10 +96,12 @@
 			if (coursesError) throw coursesError;
 
 			if (coursesData) {
-				const filteredCourses = coursesData
-					.filter(course => course.active === false && typeof course.ects === 'number' && course.course_name);
+				const filteredCourses = coursesData.filter(
+					(course) =>
+						course.active === false && typeof course.ects === 'number' && course.course_name
+				);
 
-				completedCoursesDetails = filteredCourses.map(course => ({
+				completedCoursesDetails = filteredCourses.map((course) => ({
 					name: course.course_name!,
 					ects: course.ects!
 				}));
@@ -159,8 +161,8 @@
 			return;
 		}
 
-		const courseNames = completedCoursesDetails.map(c => c.name);
-		const courseEcts = completedCoursesDetails.map(c => c.ects);
+		const courseNames = completedCoursesDetails.map((c) => c.name);
+		const courseEcts = completedCoursesDetails.map((c) => c.ects);
 		const colors = getCourseColors(completedCoursesDetails.length);
 
 		const remainingEcts = Math.max(0, totalEcts - achievedEcts);
@@ -170,25 +172,27 @@
 		const chartBackgroundColors = [...colors.backgrounds];
 		const chartBorderColors = [...colors.borders];
 
-		if (remainingEcts > 0 || achievedEcts === 0) { // Immer anzeigen, wenn nicht 100% erreicht oder 0%
+		if (remainingEcts > 0 || achievedEcts === 0) {
+			// Always display when progress is not 100% or is zero
 			chartLabels.push('Remaining ECTS');
 			chartData.push(remainingEcts);
 			chartBackgroundColors.push('rgba(209, 213, 219, 0.7)'); // light-grey
 			chartBorderColors.push('rgba(156, 163, 175, 1)'); // darker-grey for border
 		}
 
-
 		progressChart = new Chart(ctx, {
 			type: 'doughnut',
 			data: {
 				labels: chartLabels,
-				datasets: [{
-					label: 'ECTS Points',
-					data: chartData,
-					backgroundColor: chartBackgroundColors,
-					borderColor: chartBorderColors,
-					borderWidth: 1
-				}]
+				datasets: [
+					{
+						label: 'ECTS Points',
+						data: chartData,
+						backgroundColor: chartBackgroundColors,
+						borderColor: chartBorderColors,
+						borderWidth: 1
+					}
+				]
 			},
 			options: {
 				responsive: true,
@@ -220,7 +224,7 @@
 					tooltip: {
 						enabled: chartData.length > 0 && (achievedEcts > 0 || remainingEcts > 0),
 						callbacks: {
-							label: function(context: TooltipItem<'doughnut'>) {
+							label: function (context: TooltipItem<'doughnut'>) {
 								const labelIndex = context.dataIndex;
 								const dataValue = context.parsed;
 
@@ -254,6 +258,6 @@
 	}
 </script>
 
-<div class="p-6 h-96">
+<div class="h-96 p-6">
 	<canvas bind:this={progressCanvas}></canvas>
 </div>
